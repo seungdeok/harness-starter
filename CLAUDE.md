@@ -74,8 +74,8 @@ Compound Engineering 루프: `brainstorm → plan → work → simplify → revi
 코드 변경이 포함된 작업이 **리뷰(`/ce-code-review` 또는 일반 코드 리뷰)까지 끝나면**, 아래 compound 단계를 반드시 수행한다. (사소한 질의·조회·문서 오탈자 같은 무변경 작업은 제외)
 
 1. **회고**: 이번 실행–검토 과정에서 발생한 실수, 헛디딤, 되풀이하기 싫은 판단 미스, 새로 배운 것을 1~3줄로 정리한다.
-2. **기록**: `/ce-compound`로 `docs/harness/<slug>.md`에 해결 노트를 남긴다 — _문제 / 원인 / 해결 / 재발 방지_. (`/ce-compound`의 기본 경로는 `docs/solutions/`지만, 이 프로젝트에서는 `docs/harness/`에 기록한다.) 다음 에이전트가 같은 교훈을 처음부터 다시 배우지 않게 한다.
-3. **승격**: 재발 방지 규칙이라면 `docs/harness/GUARDRAILS.md`에 한 줄 규칙으로 올린다. 이 파일은 다음 작업의 `plan`/`brainstorm`이 먼저 읽는 grounding이 되어, 같은 실수를 구조적으로 막는다.
+2. **기록**: `/ce-compound`로 `docs/solutions/<slug>.md`에 해결 노트를 남긴다 — _문제 / 원인 / 해결 / 재발 방지_. 다음 에이전트가 같은 교훈을 처음부터 다시 배우지 않게 한다.
+3. **승격**: 재발 방지 규칙이라면 `docs/solutions/GUARDRAILS.md`에 한 줄 규칙으로 올린다. 이 파일은 다음 작업의 `plan`/`brainstorm`이 먼저 읽는 grounding이 되어, 같은 실수를 구조적으로 막는다.
 
 배운 게 없으면 "특이사항 없음"이라고만 남기고 넘어간다. 핵심은 **리뷰에서 끝내지 않고, 교훈을 다음 사이클로 되먹이는 것**이다.
 
@@ -90,4 +90,4 @@ Compound Engineering 루프: `brainstorm → plan → work → simplify → revi
 @docs/PRD.md
 @docs/ADR.md
 @docs/ARCHITECTURE.md
-@docs/harness/GUARDRAILS.md
+@docs/solutions/GUARDRAILS.md

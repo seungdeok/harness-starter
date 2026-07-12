@@ -5,7 +5,7 @@ Harness Pipeline — plan → plan-review → implement → pre-commit → make-
 
 기본은 대화형: init 으로 phase 를 만들고, status 로 "지금 실행할 스킬"을 확인해
 그 스킬을 세션에서 직접 실행한 뒤 advance 로 다음 stage 로 넘어간다.
---headless(run)는 각 stage 를 claude -p 로 자동 실행한다. (docs/harness/pipeline.md 참고)
+--headless(run)는 각 stage 를 claude -p 로 자동 실행한다. (docs/solutions/pipeline.md 참고)
 
 Usage:
     python3 scripts/pipeline.py init <phase-name>

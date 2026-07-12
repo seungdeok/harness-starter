@@ -1,4 +1,4 @@
-# docs/harness — 실행-검토에서 배운 것을 되먹이는 곳
+# docs/solutions — 실행-검토에서 배운 것을 되먹이는 곳
 
 Compound Engineering의 마지막 단계(compound)가 남기는 교훈 저장소예요.
 목표는 하나: **한 번 겪은 실수를 다음 사이클에서 다시 겪지 않는 것.**
@@ -38,10 +38,10 @@ Claude Code를 재시작하면 `/ce-brainstorm`, `/ce-plan`, `/ce-code-review`, 
 
 ## 구성
 
-- `GUARDRAILS.md` — 재발 방지 규칙을 한 줄씩 모은 파일. 다음 작업의 `plan`/`brainstorm`이 먼저 읽는 grounding이에요. (루트 `CLAUDE.md`에서 `@docs/harness/GUARDRAILS.md`로 항상 로드돼요.)
+- `GUARDRAILS.md` — 재발 방지 규칙을 한 줄씩 모은 파일. 다음 작업의 `plan`/`brainstorm`이 먼저 읽는 grounding이에요. (루트 `CLAUDE.md`에서 `@docs/solutions/GUARDRAILS.md`로 항상 로드돼요.)
 - `<slug>.md` — 개별 해결 노트. 아래 형식을 따라요.
 
-## 해결 노트 형식 (`docs/harness/<slug>.md`)
+## 해결 노트 형식 (`docs/solutions/<slug>.md`)
 
 ```markdown
 # <문제 한 줄 요약>
@@ -69,6 +69,6 @@ Claude Code를 재시작하면 `/ce-brainstorm`, `/ce-plan`, `/ce-code-review`, 
 
 ## 사용법
 
-- 기록: 리뷰 후 `/ce-compound` 실행 → 이 폴더에 노트 저장 (`docs/harness/`로 지정).
+- 기록: 리뷰 후 `/ce-compound` 실행 → 이 폴더에 노트 저장 (`docs/solutions/`로 지정).
 - 승격: 재발 방지 규칙은 `GUARDRAILS.md`에 한 줄로 추가.
 - 배운 게 없으면 노트를 만들지 않고 넘어가도 돼요.
