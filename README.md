@@ -19,19 +19,8 @@ Compound Engineering **phase pipeline 하네스** 스타터. 새 프로젝트에
 
 ## 퀵스타트
 
-```bash
-python3 scripts/pipeline.py selftest          # 하네스 로직 확인 → "selftest OK"
-python3 scripts/pipeline.py init "<작업명>"    # phase 시작 (전용 worktree + 브랜치 생성)
-cd .claude/worktrees/<slug>                    # 이후 명령은 worktree 안에서
-python3 scripts/pipeline.py status            # 지금 실행할 stage 확인
-# 그 스킬을 세션에서 실행 후:
-python3 scripts/pipeline.py advance --summary "<요약>"   # status→advance 반복
-```
-
-### 또는 자연어로 (프롬프트)
-
-CLI를 직접 치지 않고 Claude에게 시켜도 돼요. `phase 파이프라인` 또는 `pipeline.py`가 들어가면
-아래 흐름(`selftest → init → status → advance`)을 알아서 돌려요.
+Claude에게 시키면 돼요. `phase 파이프라인` 또는 `pipeline.py`가 들어가면
+`selftest → init → status → advance` 흐름을 알아서 돌려요.
 
 > **"<기능명> phase 파이프라인으로 작업 시작해줘"**
 
