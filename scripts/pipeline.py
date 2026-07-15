@@ -42,6 +42,7 @@ STAGES = [
 
 # init 때 한 번 물어보고 생략할 수 있는 선택 stage.
 REVIEW_STAGES = {"plan-review-ceo", "plan-review-eng"}
+COMPOUND_STAGE = "compound"  # 교훈 기록(CLAUDE.md 5장). /ce-compound 로 수동 실행이라 생략 가능.
 
 
 def _stamp() -> str:
@@ -61,17 +62,28 @@ def _slug(name: str) -> str:
     return re.sub(r"-+", "-", s).strip("-")
 
 
+def _branch(slug: str) -> str:
+    """브랜치는 입력한 이름(slug) 그대로, 항상 대문자."""
+    return slug.upper()
+
+
 def _run_git(*args) -> subprocess.CompletedProcess:
     return subprocess.run(["git", *args], cwd=str(ROOT), capture_output=True, text=True)
 
 
 # --- 순수 상태 로직 (git/io 없음 → selftest 대상) --------------------------
 
-def new_phase_doc(slug: str, include_review: bool = True) -> dict:
-    stages = [(n, a) for n, a in STAGES if include_review or n not in REVIEW_STAGES]
+def new_phase_doc(slug: str, include_review: bool = True, include_compound: bool = True) -> dict:
+    def keep(name: str) -> bool:
+        if not include_review and name in REVIEW_STAGES:
+            return False
+        if not include_compound and name == COMPOUND_STAGE:
+            return False
+        return True
+    stages = [(n, a) for n, a in STAGES if keep(n)]
     return {
         "phase": slug,
-        "branch": f"feat-{slug}",
+        "branch": _branch(slug),
         "created_at": _stamp(),
         "cursor": 0,
         "stages": [{"name": n, "action": a, "status": "pending"} for n, a in stages],
@@ -149,27 +161,34 @@ def _ask_review(no_review: bool) -> bool:
     return ans not in ("n", "no")
 
 
-def cmd_init(name: str, no_review: bool = False):
+def cmd_init(name: str, no_review: bool = False, no_worktree: bool = False,
+             no_compound: bool = False):
     """phase 전용 worktree(.claude/worktrees/<slug>)를 만들고 그 안에 phase.json 을 심는다.
-    메인 체크아웃 브랜치는 건드리지 않아 phase 를 병렬로 돌릴 수 있다."""
+    메인 체크아웃 브랜치는 건드리지 않아 phase 를 병렬로 돌릴 수 있다.
+    --no-worktree 면 현재 체크아웃에서 바로 진행한다."""
     slug = _slug(name)
-    branch = f"feat-{slug}"
-    wt = ROOT / ".claude" / "worktrees" / slug
-    f = wt / "phases" / slug / "phase.json"
+    branch = _branch(slug)
+    wt = None if no_worktree else ROOT / ".claude" / "worktrees" / slug
+    f = _phase_file(slug) if wt is None else wt / "phases" / slug / "phase.json"
     if f.exists():
         sys.exit(f"ERROR: {f} 이미 있음.")
     include_review = _ask_review(no_review)
-    if not wt.exists():
+    if wt is not None and not wt.exists():
         exists = _run_git("rev-parse", "--verify", branch).returncode == 0
         r = _run_git("worktree", "add", str(wt), *([branch] if exists else ["-b", branch]))
         if r.returncode != 0:
             sys.exit(f"ERROR: worktree '{wt}' 생성 실패: {r.stderr.strip()}")
     f.parent.mkdir(parents=True, exist_ok=True)
-    _write(f, new_phase_doc(slug, include_review))
+    _write(f, new_phase_doc(slug, include_review, not no_compound))
     if not include_review:
         print("  (plan review 생략)")
-    print(f"  Phase '{slug}' 시작 (worktree: {wt}, branch: {branch})")
-    print(f"  이후 명령은 worktree 안에서 실행하세요: cd {wt}")
+    if no_compound:
+        print("  (compound stage 생략 — /ce-compound 는 수동)")
+    if wt is None:
+        print(f"  Phase '{slug}' 시작 (현재 체크아웃, branch 유지)")
+    else:
+        print(f"  Phase '{slug}' 시작 (worktree: {wt}, branch: {branch})")
+        print(f"  이후 명령은 worktree 안에서 실행하세요: cd {wt}")
     _show_next(_read(f))
 
 
@@ -214,7 +233,7 @@ def cmd_run(arg):
 
 def selftest():
     doc = new_phase_doc("데모-phase")
-    assert doc["branch"] == "feat-데모-phase"
+    assert doc["branch"] == "데모-PHASE"
     assert doc["cursor"] == 0 and len(doc["stages"]) == len(STAGES)
     for i in range(len(STAGES)):
         assert doc["cursor"] == i
@@ -227,6 +246,9 @@ def selftest():
     no_rev = new_phase_doc("데모", include_review=False)
     assert len(no_rev["stages"]) == len(STAGES) - len(REVIEW_STAGES)
     assert not any(s["name"] in REVIEW_STAGES for s in no_rev["stages"])
+    no_comp = new_phase_doc("데모", include_compound=False)
+    assert len(no_comp["stages"]) == len(STAGES) - 1
+    assert not any(s["name"] == COMPOUND_STAGE for s in no_comp["stages"])
     assert _slug("Share Fortune!!") == "share-fortune"
     print("selftest OK")
 
@@ -236,6 +258,8 @@ def main():
     sub = ap.add_subparsers(dest="cmd", required=True)
     p = sub.add_parser("init"); p.add_argument("name")
     p.add_argument("--no-review", action="store_true", help="plan-review(ceo/eng) stage 생략(안 물어봄)")
+    p.add_argument("--no-worktree", action="store_true", help="worktree 없이 현재 체크아웃에서 진행")
+    p.add_argument("--no-compound", action="store_true", help="compound stage 생략(/ce-compound 는 수동)")
     p = sub.add_parser("status"); p.add_argument("phase", nargs="?")
     p = sub.add_parser("advance"); p.add_argument("phase", nargs="?"); p.add_argument("--summary")
     p = sub.add_parser("run"); p.add_argument("phase", nargs="?")
@@ -243,7 +267,7 @@ def main():
     a = ap.parse_args()
 
     if a.cmd == "init":
-        cmd_init(a.name, a.no_review)
+        cmd_init(a.name, a.no_review, a.no_worktree, a.no_compound)
     elif a.cmd == "status":
         cmd_status(a.phase)
     elif a.cmd == "advance":
