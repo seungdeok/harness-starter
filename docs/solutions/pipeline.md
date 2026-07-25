@@ -5,6 +5,11 @@
 어느 stage 까지 왔는지는 `phases/<slug>/phase.json` 이 기억해요.
 `pipeline.py` 자체는 **의존성 0(stdlib)** 짜리 stage 체커예요.
 
+> **스크립트 위치** — plugin 번들(`skills/pipeline/scripts/pipeline.py`)이 단일 소스예요.
+> `/harness:setup` 을 프로젝트 scope 로 돌리면 `<프로젝트>/scripts/pipeline.py` 로 복사돼요.
+> 아래 예시의 `<pipeline.py>` 는 그 둘 중 하나의 경로예요. 스크립트는 **cwd 기준 git root** 에
+> phase 를 만들므로(스크립트 위치와 무관), worktree 안에서 실행하면 그 worktree 가 대상이에요.
+
 ## Stage 매핑
 
 OMC/내부 스킬 우선. compound 만 CLAUDE.md 5장이 `/ce-compound` 를 지정.
@@ -40,19 +45,19 @@ phase 가 끝나(PR 머지) 정리할 땐 `git worktree remove .claude/worktrees
 
 ```bash
 # 1. phase 시작 (.claude/worktrees/share-fortune worktree + SHARE-FORTUNE 브랜치 생성)
-python3 scripts/pipeline.py init "share fortune"
+python3 <pipeline.py> init "share fortune"
 cd .claude/worktrees/share-fortune         # 이후 명령은 worktree 안에서
 
 # 2. 지금 실행할 stage 확인
-python3 scripts/pipeline.py status
+python3 <pipeline.py> status
 #   ▶ [1/7] plan — 스킬: /plan
 
 # 3. 그 스킬을 세션에서 실행 → 결과가 만족스러우면 넘어가기
 #    (세션에서 /plan 실행)
-python3 scripts/pipeline.py advance --summary "공유 기능 계획 확정"
+python3 <pipeline.py> advance --summary "공유 기능 계획 확정"
 
 # 4. status → advance 를 7번 반복. commit-push 는 스킬 대신 명령이라 직접 실행:
-git add -A && git commit && git push -u origin HEAD && python3 scripts/pipeline.py advance
+git add -A && git commit && git push -u origin HEAD && python3 <pipeline.py> advance
 
 # 5. compound 까지 advance 하면 phase 완료. 다음 작업은 다시 init 부터.
 ```
@@ -70,9 +75,9 @@ git add -A && git commit && git push -u origin HEAD && python3 scripts/pipeline.
 - implement 만 자동으로 굴리고, commit-push 부터는 다시 대화형:
 
 ```bash
-python3 scripts/pipeline.py init "share fortune"
+python3 <pipeline.py> init "share fortune"
 # 세션에서 /plan, /plan-ceo-review, /plan-eng-review 실행 후 advance 세 번…
-python3 scripts/pipeline.py run     # implement 자동 실행 → commit-push 앞에서 멈춤
+python3 <pipeline.py> run     # implement 자동 실행 → commit-push 앞에서 멈춤
 ```
 
 `run` 은 스킬 stage 마다 `phases/<slug>/stage-<name>-output.json`(gitignore 됨) 에 로그를 남기고,
@@ -94,5 +99,5 @@ python3 scripts/pipeline.py run     # implement 자동 실행 → commit-push �
 ## 로직 검증
 
 ```bash
-python3 scripts/pipeline.py selftest   # cursor/advance/slug 순수 로직 체크
+python3 <pipeline.py> selftest   # cursor/advance/slug 순수 로직 체크
 ```
