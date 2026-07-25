@@ -29,37 +29,42 @@ gh auth status || echo "gh 인증이 필요해요: gh auth login -h github.com"
 
 ## 절차
 
+### 0. base 브랜치·docs 경로 결정
+
+- **base 브랜치**: `gh repo view --json defaultBranchRef -q .defaultBranchRef.name` 으로 감지해요 (실패 시 `main`). 아래의 `<base>` 는 전부 이 값이에요.
+- **docs 경로**: `.claude/harness.json` 의 `docsPath` 를 읽어요 (파일이나 키가 없으면 `docs`). 아래의 `<docsPath>` 는 이 값이에요.
+
 ### 1. 브랜치·변경 상태 확인
 
 ```bash
 git branch --show-current
 git status --porcelain
-git log main..HEAD --oneline
+git log <base>..HEAD --oneline
 ```
 
-- 현재 브랜치가 `main`이면 **중단**하고, 별도 브랜치가 필요하다고 안내해요.
+- 현재 브랜치가 `<base>`면 **중단**하고, 별도 브랜치가 필요하다고 안내해요.
 - 커밋 안 된 변경이 있으면 사용자에게 커밋/스태시 여부를 물어요.
 - 원격에 브랜치가 없으면 `gh pr create`가 자동 push하지만, 필요 시 `git push -u origin <branch>`를 안내해요.
 
 ### 2. 문서 동기화 확인 (PRD/ADR/ARCHITECTURE)
 
-`src/`·설정·의존성이 바뀐 PR이면 `docs/PRD.md`·`docs/ADR.md`·`docs/ARCHITECTURE.md`가 최신인지 확인해요. **문서·주석만 바뀐 PR이면 이 단계는 건너뛰어요.**
+`src/`·설정·의존성이 바뀐 PR이면 `<docsPath>/PRD.md`·`<docsPath>/ADR.md`·`<docsPath>/ARCHITECTURE.md`가 최신인지 확인해요. **문서·주석만 바뀐 PR이거나, 해당 문서 파일이 프로젝트에 없으면 이 단계는 건너뛰어요.**
 
 ```bash
-git diff --name-only main..HEAD
+git diff --name-only <base>..HEAD
 ```
 
 무엇이 바뀌었는지에 따라 갱신 대상을 판단해요:
 
-- **기능·사용자 흐름** 변경 → `docs/PRD.md`
-- **기술 결정·의존성·트레이드오프** 변경 → `docs/ADR.md` (새 ADR 항목 추가/수정)
-- **디렉토리·계층·데이터 흐름** 변경 → `docs/ARCHITECTURE.md`
+- **기능·사용자 흐름** 변경 → `<docsPath>/PRD.md`
+- **기술 결정·의존성·트레이드오프** 변경 → `<docsPath>/ADR.md` (새 ADR 항목 추가/수정)
+- **디렉토리·계층·데이터 흐름** 변경 → `<docsPath>/ARCHITECTURE.md`
 
 해당하는 문서마다 사용자에게 **"갱신할까요?"**를 물어요. 갱신하기로 하면 그 문서를 수정하고 이번 브랜치에 커밋한 뒤 PR에 포함하고, "해당 없음"이면 그대로 진행해요.
 
 ### 3. 제목·개요 구성
 
-- 제목이 인자로 없으면, `main..HEAD` 커밋 메시지에서 초안을 만들어 제안해요.
+- 제목이 인자로 없으면, `<base>..HEAD` 커밋 메시지에서 초안을 만들어 제안해요.
 - 개요는 커밋 내역을 바탕으로 **무엇을·왜** 바꿨는지 요약해요.
 
 ### 4. 본문 구성 (템플릿 형식 준수)
@@ -79,7 +84,7 @@ git diff --name-only main..HEAD
 실행 전에 최종 **title / body**를 사용자에게 보여주고 확인받아요. 확인 후:
 
 ```bash
-gh pr create --draft --base main --title "<제목>" --body "<본문>"
+gh pr create --draft --base <base> --title "<제목>" --body "<본문>"
 ```
 
 생성되면 반환된 PR URL을 사용자에게 알려줘요.
@@ -87,6 +92,6 @@ gh pr create --draft --base main --title "<제목>" --body "<본문>"
 ## 주의
 
 - 항상 `--draft`로 만들어요 (정식 전환은 사용자가 준비되면 `gh pr ready`).
-- base는 `main`이에요.
+- base는 원격 기본 브랜치예요 (감지 실패 시 `main`).
 - 본문은 반드시 `## 개요`·`## 체크리스트` 구조를 유지해요.
 - 문서 동기화는 **코드/설정/의존성 변경이 있을 때만** 물어요 (문서·주석만 바뀐 PR은 스킵).

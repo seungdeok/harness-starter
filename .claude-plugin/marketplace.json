@@ -1,0 +1,14 @@
+{
+  "name": "harness",
+  "description": "Compound Engineering phase pipeline 하네스 marketplace",
+  "owner": {
+    "name": "seungdeok"
+  },
+  "plugins": [
+    {
+      "name": "harness",
+      "source": "./",
+      "description": "phase pipeline 하네스 (pipeline·make-pr·make-issue·setup)"
+    }
+  ]
+}

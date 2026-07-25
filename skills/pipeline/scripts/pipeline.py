@@ -8,11 +8,11 @@ Harness Pipeline — plan → plan-review → implement → pre-commit → make-
 --headless(run)는 각 stage 를 claude -p 로 자동 실행한다. (docs/solutions/pipeline.md 참고)
 
 Usage:
-    python3 scripts/pipeline.py init <phase-name>
-    python3 scripts/pipeline.py status [phase]
-    python3 scripts/pipeline.py advance [phase] [--summary "..."]
-    python3 scripts/pipeline.py run [phase]      # headless: 남은 stage 자동 실행
-    python3 scripts/pipeline.py selftest
+    python3 pipeline.py init <phase-name>
+    python3 pipeline.py status [phase]
+    python3 pipeline.py advance [phase] [--summary "..."]
+    python3 pipeline.py run [phase]      # headless: 남은 stage 자동 실행
+    python3 pipeline.py selftest
 """
 
 import argparse
@@ -23,7 +23,17 @@ import sys
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
+
+def _git_root() -> Path:
+    """ROOT 는 스크립트 위치가 아니라 cwd 기준 git root. plugin 설치 시 스크립트는
+    ~/.claude/plugins/ 캐시에 있으므로, phase 는 '지금 작업 중인 레포'에 속해야 한다.
+    worktree 안에서 실행하면 worktree root 가 잡혀 기존 동작이 유지된다."""
+    r = subprocess.run(["git", "rev-parse", "--show-toplevel"],
+                       capture_output=True, text=True)
+    return Path(r.stdout.strip()) if r.returncode == 0 else Path.cwd()
+
+
+ROOT = _git_root()
 PHASES = ROOT / "phases"
 KST = timezone(timedelta(hours=9))
 

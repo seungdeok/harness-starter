@@ -1,0 +1,9 @@
+{
+  "name": "harness",
+  "description": "Compound Engineering phase pipeline 하네스 — pipeline·make-pr·make-issue·setup 스킬. version 필드는 의도적으로 생략(커밋 SHA 기준으로 push 즉시 업데이트).",
+  "author": {
+    "name": "seungdeok"
+  },
+  "homepage": "https://github.com/seungdeok/harness-starter",
+  "repository": "https://github.com/seungdeok/harness-starter"
+}
