@@ -23,9 +23,9 @@ Stages: `plan → [plan-review-ceo] → [plan-review-eng] → implement → comm
 
 아래 규칙으로 `pipeline.py` 경로를 정하고, 이후 모든 명령에서 그 경로를 써요:
 
-1. 프로젝트의 `.claude/harness.json` 을 읽어요. `scope` 가 `project` 이고 `<프로젝트>/scripts/pipeline.py` 가 있으면 → **그 파일**을 사용.
-2. 그 외(글로벌 scope, 또는 파일 없음) → **이 스킬 폴더의 `scripts/pipeline.py`(번들)** 를 절대 경로로 사용.
-3. `.claude/harness.json` 자체가 없으면 `/harness:setup` 을 먼저 실행하라고 권한 뒤, 사용자가 원하면 번들 스크립트 + 기본값으로 그냥 진행해도 돼요.
+1. 환경변수 `HARNESS_SCOPE` 를 확인하고, 없으면 프로젝트의 `.claude/settings.local.json` 의 `env.HARNESS_SCOPE` 를 읽어요. 값이 `project` 이고 `<프로젝트>/scripts/pipeline.py` 가 있으면 → **그 파일**을 사용.
+2. 그 외(글로벌 scope, 또는 값 없음) → **이 스킬 폴더의 `scripts/pipeline.py`(번들)** 를 절대 경로로 사용.
+3. `HARNESS_SCOPE` 값이 어디에도 없으면 `/harness:setup` 을 먼저 실행하라고 권한 뒤, 사용자가 원하면 번들 스크립트 + 기본값으로 그냥 진행해도 돼요.
 
 스크립트는 **cwd 기준 git root** 에 phase 를 만들므로, 어느 복사본이든 실행 위치(cwd)가 곧 대상 레포예요.
 

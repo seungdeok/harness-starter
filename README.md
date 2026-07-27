@@ -36,12 +36,14 @@ setup 이 아래 세 가지를 묻고 초기화해요:
 
 ## docs 경로 가이드
 
-- setup 에서 답한 경로가 `.claude/harness.json` 의 `docsPath` 에 저장돼요 (커밋 대상).
-- `make-pr`(문서 동기화 확인), compound(교훈 기록) 등 harness 스킬이 이 값을 읽어요.
-- 변경 방법: `.claude/harness.json` 을 직접 수정하거나 `/harness:setup` 재실행.
+- setup 에서 답한 경로가 `.claude/settings.local.json` 의 `env.HARNESS_DOCS_PATH` 에 저장돼요 (gitignore 대상 — 개발자 로컬 전용, 팀원도 각자 setup 실행).
+- `make-pr`(문서 동기화 확인), compound(교훈 기록) 등 harness 스킬이 이 값을 읽어요 (환경변수 우선, 파일 fallback).
+- 변경 방법: `.claude/settings.local.json` 을 직접 수정하거나 `/harness:setup` 재실행.
 
 ```json
-{ "scope": "global", "docsPath": "docs" }
+{
+  "env": { "HARNESS_SCOPE": "global", "HARNESS_DOCS_PATH": "docs" }
+}
 ```
 
 ## 팀원과 공유
