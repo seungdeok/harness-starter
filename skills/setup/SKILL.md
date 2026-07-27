@@ -4,7 +4,8 @@ description: >
   harness plugin 설치 마법사예요. plugin 설치 후 프로젝트에서 처음 한 번 실행해요.
   다음 상황에서 활성화돼요: 사용자가 "harness 설정", "harness 세팅", "하네스 설치",
   "harness setup", "파이프라인 세팅해줘"라고 말할 때, 또는 다른 harness 스킬이
-  `.claude/harness.json` 이 없어서 안내했을 때. scope(프로젝트/글로벌)와 docs 경로를 묻고,
+  harness 설정(`.claude/settings.local.json` 의 `env.HARNESS_*`)이 없어서 안내했을 때.
+  scope(프로젝트/글로벌)와 docs 경로를 묻고,
   CLAUDE.md는 절대 덮어쓰지 않고 append만 해요.
 user-invocable: true
 metadata:
@@ -14,7 +15,7 @@ metadata:
 # setup — harness 설치 마법사
 
 plugin 은 설치 시점에 스크립트를 못 돌리므로, 이 스킬이 프로젝트별 초기화를 대신해요.
-결과물: `.claude/harness.json`(설정) + scope 에 따른 파일 scaffold.
+결과물: `.claude/settings.local.json` 의 `env.HARNESS_*`(설정) + scope 에 따른 파일 scaffold.
 
 **절대 규칙: 기존 파일을 덮어쓰지 않아요.** CLAUDE.md 는 append 만, scaffold 는 없는 파일만 생성.
 
@@ -33,13 +34,21 @@ plugin 은 설치 시점에 스크립트를 못 돌리므로, 이 스킬이 프�
 
 ## 2. 설정 기록 (공통)
 
-`.claude/harness.json` 을 프로젝트에 만들어요 (커밋 대상 — plugin 활성화 키가 아니라서 공유 가능):
+`.claude/settings.local.json` 의 `env` 에 harness 설정을 **merge** 해요 (gitignore 대상 — 개발자 로컬 전용,
+팀원도 각자 setup 을 실행해야 해요). 파일이나 `env` 키가 이미 있으면 기존 키(예: `enabledPlugins`, 다른
+env 변수)는 그대로 두고 `HARNESS_*` 만 추가/갱신해요. 덮어쓰기 금지:
 
 ```json
-{ "scope": "global|project", "docsPath": "<답변한 경로>" }
+{
+  "env": {
+    "HARNESS_SCOPE": "global|project",
+    "HARNESS_DOCS_PATH": "<답변한 경로>"
+  }
+}
 ```
 
-이미 있으면 현재 값을 보여주고 갱신 여부를 확인해요.
+이미 `HARNESS_*` 값이 있으면 현재 값을 보여주고 갱신 여부를 확인해요.
+(env 는 세션 시작 시 환경변수로 주입되므로, setup 직후 현재 세션에서는 스킬들이 파일을 직접 읽어 fallback 해요.)
 
 `.gitignore` 에 아래 세 줄이 없으면 추가해요 (있는 줄은 건너뜀):
 
@@ -78,7 +87,7 @@ templates 원본은 이 스킬 폴더의 `templates/` 에 있어요.
 
 설정 완료 후 아래를 요약해서 알려줘요:
 
-- **docs 경로 진행 방식**: 답변한 경로가 `.claude/harness.json` 의 `docsPath` 에 저장됐고, make-pr(문서 동기화)·compound(교훈 기록) 등 harness 스킬이 이 값을 읽어요. 바꾸려면 이 파일을 수정하거나 `/harness:setup` 을 다시 실행하면 돼요.
+- **docs 경로 진행 방식**: 답변한 경로가 `.claude/settings.local.json` 의 `env.HARNESS_DOCS_PATH` 에 저장됐고, make-pr(문서 동기화)·compound(교훈 기록) 등 harness 스킬이 이 값을 읽어요. 바꾸려면 이 파일을 수정하거나 `/harness:setup` 을 다시 실행하면 돼요. 이 파일은 gitignore 대상이라 팀원도 각자 `/harness:setup` 을 한 번 실행해야 해요.
 - **plugin 활성화 공유**: 팀원도 쓰려면 각자 `.claude/settings.local.json` 에 활성화 설정을 넣어야 해요 (커밋되는 `.claude/settings.json` 에 넣으면 보안상 무시돼요):
 
   ```json

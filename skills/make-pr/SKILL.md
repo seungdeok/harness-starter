@@ -32,7 +32,7 @@ gh auth status || echo "gh 인증이 필요해요: gh auth login -h github.com"
 ### 0. base 브랜치·docs 경로 결정
 
 - **base 브랜치**: `gh repo view --json defaultBranchRef -q .defaultBranchRef.name` 으로 감지해요 (실패 시 `main`). 아래의 `<base>` 는 전부 이 값이에요.
-- **docs 경로**: `.claude/harness.json` 의 `docsPath` 를 읽어요 (파일이나 키가 없으면 `docs`). 아래의 `<docsPath>` 는 이 값이에요.
+- **docs 경로**: 환경변수 `HARNESS_DOCS_PATH` 를 읽고, 없으면 `.claude/settings.local.json` 의 `env.HARNESS_DOCS_PATH` 를 읽어요 (둘 다 없으면 `docs`). 아래의 `<docsPath>` 는 이 값이에요.
 
 ### 1. 브랜치·변경 상태 확인
 
