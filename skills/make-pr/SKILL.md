@@ -16,7 +16,8 @@ metadata:
 레포의 PR 템플릿(`.github/pull_request_template.md`) 형식에 맞춰 draft PR을 만들어요.
 
 ```
-브랜치·변경 확인 → 문서 동기화 확인 → 개요 초안 → 확인 → gh pr create --draft
+브랜치·변경 확인 → stacked PR 여부(리뷰 단위 2+) → 문서 동기화 확인 → 개요 초안 → 확인 → gh pr create --draft
+                   └─ 예: gh-stack (gh stack init/submit)
 ```
 
 ## 사전 조건
@@ -45,6 +46,40 @@ git log <base>..HEAD --oneline
 - 현재 브랜치가 `<base>`면 **중단**하고, 별도 브랜치가 필요하다고 안내해요.
 - 커밋 안 된 변경이 있으면 사용자에게 커밋/스태시 여부를 물어요.
 - 원격에 브랜치가 없으면 `gh pr create`가 자동 push하지만, 필요 시 `git push -u origin <branch>`를 안내해요.
+
+### 1.5 stacked PR 여부 (opt-in)
+
+판단 기준은 커밋 개수가 아니라 **리뷰 단위(관심사)가 2개 이상으로 나뉘는지**예요. `git log <base>..HEAD --oneline` 과 변경 파일을 보고, 커밋들이 의존 순서가 있는 계층(예: 모델 → API → UI)으로 묶일 때만 AskUserQuestion 으로 "stacked PR로 나눌까요?"를 물어요. 커밋이 많아도 전부 한 관심사면 묻지 않고 단일 PR로 가요.
+
+- **아니오 (기본)** → 아래 2~5 그대로 진행 (단일 draft PR).
+- **예** → 절차 2(문서 동기화)까지는 그대로 수행하고, 절차 3~5 대신 아래 **gh-stack 흐름**으로 생성해요.
+
+  주의: `gh stack` 명령은 인자 없이 실행하면 대화형 프롬프트에 걸려 멈춰요. 반드시 아래처럼 브랜치 이름·플래그를 붙여요.
+
+  1. 확장 설치 확인 — 없으면 안내하고 설치받아요:
+
+     ```bash
+     gh extension list | grep -qi gh-stack || echo "설치 필요: gh extension install github/gh-stack"
+     git config rerere.enabled true   # init 시 대화형 프롬프트 방지
+     ```
+
+  2. 커밋을 관심사(계층) 단위로 묶어 **어떤 커밋이 어느 계층인지 사용자에게 보여주고 확인**받아요. 하위 계층(기반 코드)이 아래, 의존하는 코드가 위예요.
+  3. 계층 경계 커밋마다 브랜치를 만들어요 — 마지막 계층은 현재 브랜치를 그대로 써요:
+
+     ```bash
+     git branch <계층1-브랜치> <계층1 마지막 커밋 SHA>
+     git branch <계층2-브랜치> <계층2 마지막 커밋 SHA>
+     ```
+
+  4. 아래→위 순서로 스택을 만들고 draft PR을 생성해요 (제목은 커밋 메시지에서 자동 생성):
+
+     ```bash
+     gh stack init <계층1-브랜치> <계층2-브랜치> <현재-브랜치>
+     gh stack submit --auto
+     ```
+
+  5. `gh stack view --json` 으로 결과를 확인하고 PR URL들을 사용자에게 알려주고 종료해요. 제목·본문을 다듬으려면 `gh pr edit <번호>` 를 안내해요.
+  6. `submit` 이 exit code 9 로 실패하면 레포에 stacked PR 기능이 꺼져 있는 거예요 — 사용자에게 알리고 단일 draft PR 흐름(3~5)으로 돌아가요.
 
 ### 2. 문서 동기화 확인 (PRD/ADR/ARCHITECTURE)
 
@@ -92,6 +127,7 @@ gh pr create --draft --base <base> --title "<제목>" --body "<본문>"
 ## 주의
 
 - 항상 `--draft`로 만들어요 (정식 전환은 사용자가 준비되면 `gh pr ready`).
+- stacked PR은 **opt-in**이에요 — 리뷰 단위가 2개 이상으로 나뉠 때만 묻고, 기본은 항상 단일 draft PR이에요.
 - base는 원격 기본 브랜치예요 (감지 실패 시 `main`).
 - 본문은 반드시 `## 개요`·`## 체크리스트` 구조를 유지해요.
 - 문서 동기화는 **코드/설정/의존성 변경이 있을 때만** 물어요 (문서·주석만 바뀐 PR은 스킵).
