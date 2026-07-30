@@ -23,3 +23,10 @@
 **결정**: harness 설정(`scope`, `docsPath`)을 별도 파일 `.claude/harness.json` 대신 `.claude/settings.local.json` 의 `env` 키에 `HARNESS_SCOPE`/`HARNESS_DOCS_PATH` 환경변수로 저장한다. 스킬은 환경변수를 먼저 읽고, 없으면 파일의 `env` 객체를 직접 읽는다(setup 직후 세션 재시작 전에는 env 주입이 안 되므로). setup 은 이 파일을 merge 만 하고(기존 `enabledPlugins`·다른 env 변수 보존) 덮어쓰지 않는다.
 **이유**: 설정 파일을 하나로 통합(plugin 활성화와 harness 설정이 같은 파일). `env` 는 settings 스키마가 지원하는 키라 unknown-key 경고가 없고, Claude Code 가 세션 환경변수로 주입해 스킬·스크립트가 JSON 파싱 없이 읽을 수 있다.
 **트레이드오프**: settings.local.json 은 gitignore 대상이라 설정이 커밋/공유되지 않는다(기존 harness.json 은 커밋 대상이었음) → 팀원 각자 `/harness:setup` 을 한 번 실행해야 한다. 일부 도구/샌드박스 환경은 이 파일 쓰기를 제한한다 → setup 실행 시 권한 프롬프트가 뜰 수 있다.
+
+---
+
+### ADR-004: pipeline stage 재구성 — TDD splice·human gate·resume 전용 run (issue #7)
+**결정**: pipeline stage 를 `discuss → plan → [ceo] → [eng] → approve → implement-red/green(TDD, 기본; --no-tdd 시 implement 단일) → verify → commit-push → make-pr` 로 재구성한다. red/green 은 `STAGES` 상수가 아니라 doc-build(`new_phase_doc`) 시 `implement` 자리에 splice 한다. discuss/approve 는 opt-out 없는 필수 human gate 다(계획 승인이 파이프라인의 목적이라 생략 대상이 아니다). headless `run` 은 resume 전용 헬퍼로 격하한다(discuss·approve·implement-red 직후 멈춘다). `verify` 는 `/verify` — `implement` 와 함께 oh-my-claudecode(OMC) 하드 의존이다. plan 산출물은 `phases/<slug>/plan.md` 로 커밋 대상화한다(`.gitignore` 를 `phases/*/*` + `!phases/*/plan.md` 로 재구성).
+**이유**: 계획 승인 게이트·TDD·증거 기반 검증 단계 부재를 해소하면서 브랜치/worktree 병렬성을 유지한다.
+**트레이드오프**: 모든 phase 에 human stop 2개(discuss/approve)가 추가된다 → 의도된 설계. `run` 자동화 범위가 축소된다 → resume 전용으로 문서화. OMC 의존을 명시화한다. CLAUDE.md §5 hook 승격 지침은 issue #7 과 무관한 사용자 요청 rider 로 별도 커밋한다.
