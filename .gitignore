@@ -42,5 +42,7 @@ lerna-debug.log*
 # phase 별 git worktree (pipeline.py init 이 생성) — 레포 안이지만 추적 제외
 .claude/worktrees/
 
-# phase 파이프라인 산출물 전체 — 임시 하네스 아티팩트, 추적 제외
-phases/
+# phase 파이프라인 산출물 — plan.md 만 추적, 나머지(phase.json 등)는 임시 아티팩트라 제외.
+# 제외된 디렉토리(phases/) 하위는 ! 재포함이 안 되는 git 특성 때문에 2줄로 구성.
+phases/*/*
+!phases/*/plan.md

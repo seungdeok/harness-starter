@@ -1,7 +1,8 @@
 # harness-starter
 
 Compound Engineering **phase pipeline 하네스**. Claude Code **plugin(`harness`)** 으로 설치해
-어느 레포에서든 `plan → plan-review → implement → commit → make-pr` 루프를 돌릴 수 있어요.
+어느 레포에서든 `discuss → plan → plan-review → approve → implement(TDD) → verify → commit → make-pr`
+루프를 돌릴 수 있어요.
 
 ## 설치 (Claude Code plugin)
 
@@ -85,13 +86,22 @@ Claude에게 시키면 돼요:
 | plan-review 생략 | "댓글 기능 phase로 시작하되 **plan review는 빼줘**" |
 | 다음 stage | "**다음 stage 진행해**" / "advance 해줘" |
 | 현재 위치 | "**지금 어느 stage야?**" |
-| 전자동(headless) | "이 phase **끝까지 자동으로 돌려**" |
+| TDD 생략 | "이 phase는 **TDD 빼고** 시작해줘" |
+| 자동 이어가기(headless) | "approve 이후 구간 **run으로 이어서 돌려**" (`run`은 resume 전용 — discuss·approve·implement-red 직후·commit-push에서 멈춰요) |
 
 자세한 내용은 `docs/solutions/pipeline.md`.
 
-## 필요한 스킬 (optional)
+## 필요한 스킬
 
-각 stage는 스킬을 실행해요. plugin 에 없는 아래 두 개는 외부에서 켜야 해요 — 없으면 그 stage만 건너뛰면 돼요.
+각 stage는 스킬을 실행해요. plugin 에 없는 스킬은 외부에서 켜야 해요.
+
+**required** — plan·implement(-red/green)·verify stage 가 하드 의존해요 (ADR-004):
+
+| stage | 스킬 | 출처 |
+| --- | --- | --- |
+| plan·implement(-red/green)·verify | `/plan`·`/ultrawork`·`/verify` | **oh-my-claudecode (OMC)** |
+
+**optional** — 없으면 그 stage만 건너뛰면 돼요:
 
 | stage | 스킬 | 출처 |
 | --- | --- | --- |

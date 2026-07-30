@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
-Harness Pipeline — plan → plan-review → implement → pre-commit → make-pr → compound 를
-한 phase 씩 돌리고, phase.json 으로 어느 stage 까지 왔는지 추적한다.
+Harness Pipeline — discuss → plan → plan-review → approve → implement(red/green) →
+verify → commit-push → make-pr → compound 를 한 phase 씩 돌리고,
+phase.json 으로 어느 stage 까지 왔는지 추적한다.
 
 기본은 대화형: init 으로 phase 를 만들고, status 로 "지금 실행할 스킬"을 확인해
 그 스킬을 세션에서 직접 실행한 뒤 advance 로 다음 stage 로 넘어간다.
@@ -38,13 +39,17 @@ PHASES = ROOT / "phases"
 KST = timezone(timedelta(hours=9))
 
 # stage 이름 → 실행할 action. "/"로 시작하면 스킬(대화형/claude -p), 아니면 셸 명령.
-# implement 는 OMC /ultrawork(선작업 0). step 단위까지 자동화하려면 "execute.py <slug>" 로 교체.
+# discuss/approve 는 INTERACTIVE_STAGES — 스킬도 명령도 아닌 대화형 stage.
+# implement/verify 는 OMC(/ultrawork·/verify) 하드 의존 (ADR-004).
 # lefthook 이 commit 시 lint 를 돌리므로 commit-push stage 가 곧 "pre-commit" 역할.
 STAGES = [
+    ("discuss", "이슈·요구사항을 사용자와 자유 대화로 논의"),
     ("plan", "/plan"),
     ("plan-review-ceo", "/plan-ceo-review"),
     ("plan-review-eng", "/plan-eng-review"),
+    ("approve", "phases/<slug>/plan.md 를 사용자에게 승인받기"),
     ("implement", "/ultrawork"),
+    ("verify", "/verify"),
     ("commit-push", "git add -A && git commit && git push -u origin HEAD"),
     ("make-pr", "/make-pr"),
     ("compound", "/ce-compound"),
@@ -53,6 +58,16 @@ STAGES = [
 # init 때 한 번 물어보고 생략할 수 있는 선택 stage.
 REVIEW_STAGES = {"plan-review-ceo", "plan-review-eng"}
 COMPOUND_STAGE = "compound"  # 교훈 기록(CLAUDE.md 5장). /ce-compound 로 수동 실행이라 생략 가능.
+INTERACTIVE_STAGES = {"discuss", "approve"}  # 사람과의 대화가 곧 실행 — headless 불가.
+
+# TDD 시 implement 자리에 splice 되는 record 쌍. hint 는 red/green 전용 optional 필드라
+# 접근은 항상 s.get("hint", ""). 문구의 원본은 SKILL.md §2 — 수정 시 함께 갱신.
+TDD_PAIR = [
+    {"name": "implement-red", "action": "/ultrawork",
+     "hint": "RED: 실패하는 테스트만 먼저 작성하고, 올바른 이유로 실패하는지 확인. 구현 코드는 건드리지 않기."},
+    {"name": "implement-green", "action": "/ultrawork",
+     "hint": "GREEN: 최소 구현으로 테스트 통과. red 에서 만든 테스트를 수정해 통과시키는 것 금지."},
+]
 
 
 def _stamp() -> str:
@@ -83,20 +98,29 @@ def _run_git(*args) -> subprocess.CompletedProcess:
 
 # --- 순수 상태 로직 (git/io 없음 → selftest 대상) --------------------------
 
-def new_phase_doc(slug: str, include_review: bool = True, include_compound: bool = True) -> dict:
+def new_phase_doc(slug: str, include_review: bool = True, include_compound: bool = True,
+                  include_tdd: bool = True) -> dict:
     def keep(name: str) -> bool:
         if not include_review and name in REVIEW_STAGES:
             return False
         if not include_compound and name == COMPOUND_STAGE:
             return False
         return True
-    stages = [(n, a) for n, a in STAGES if keep(n)]
+    stages = []
+    for n, a in STAGES:
+        if not keep(n):
+            continue
+        if n == "implement" and include_tdd:
+            # TDD: implement 자리에 red/green 을 splice — 항상 정확히 한 구현 경로만 남는다.
+            stages.extend({**s, "status": "pending"} for s in TDD_PAIR)
+        else:
+            stages.append({"name": n, "action": a, "status": "pending"})
     return {
         "phase": slug,
         "branch": _branch(slug),
         "created_at": _stamp(),
         "cursor": 0,
-        "stages": [{"name": n, "action": a, "status": "pending"} for n, a in stages],
+        "stages": stages,
     }
 
 
@@ -146,9 +170,16 @@ def _show_next(doc: dict):
         print(f"  ✓ '{doc['phase']}' 모든 stage 완료. 새 phase 는 `init`.")
         return
     s = doc["stages"][i]
-    kind = "스킬" if s["action"].startswith("/") else "명령"
+    if s["name"] in INTERACTIVE_STAGES:
+        kind = "대화형"
+    else:
+        kind = "스킬" if s["action"].startswith("/") else "명령"
     print(f"  ▶ [{i + 1}/{len(doc['stages'])}] {s['name']} — {kind}: {s['action']}")
-    if s["action"].startswith("/"):
+    if s.get("hint", ""):
+        print(f"    {s['hint']}")
+    if s["name"] in INTERACTIVE_STAGES:
+        print(f"    대화형: 이 세션에서 사용자와 진행 후 `pipeline.py advance` 로 넘어가세요.")
+    elif s["action"].startswith("/"):
         print(f"    대화형: 이 스킬을 실행 후 `pipeline.py advance` 로 넘어가세요.")
     elif s["name"] == "commit-push":
         # 메시지는 임의가 아니라 Conventional Commits 규칙. git-master 위임이 제일 편함.
@@ -172,7 +203,7 @@ def _ask_review(no_review: bool) -> bool:
 
 
 def cmd_init(name: str, no_review: bool = False, no_worktree: bool = False,
-             no_compound: bool = False):
+             no_compound: bool = False, no_tdd: bool = False):
     """phase 전용 worktree(.claude/worktrees/<slug>)를 만들고 그 안에 phase.json 을 심는다.
     메인 체크아웃 브랜치는 건드리지 않아 phase 를 병렬로 돌릴 수 있다.
     --no-worktree 면 현재 체크아웃에서 바로 진행한다."""
@@ -189,11 +220,13 @@ def cmd_init(name: str, no_review: bool = False, no_worktree: bool = False,
         if r.returncode != 0:
             sys.exit(f"ERROR: worktree '{wt}' 생성 실패: {r.stderr.strip()}")
     f.parent.mkdir(parents=True, exist_ok=True)
-    _write(f, new_phase_doc(slug, include_review, not no_compound))
+    _write(f, new_phase_doc(slug, include_review, not no_compound, not no_tdd))
     if not include_review:
         print("  (plan review 생략)")
     if no_compound:
         print("  (compound stage 생략 — /ce-compound 는 수동)")
+    if no_tdd:
+        print("  (TDD 생략 — implement 단일 stage)")
     if wt is None:
         print(f"  Phase '{slug}' 시작 (현재 체크아웃, branch 유지)")
     else:
@@ -220,11 +253,14 @@ def cmd_run(arg):
     while doc["cursor"] < len(doc["stages"]):
         s = doc["stages"][doc["cursor"]]
         name, action = s["name"], s["action"]
+        if name in INTERACTIVE_STAGES:
+            # 대화형 stage(discuss/approve)는 사람과의 대화가 곧 실행 — headless 불가.
+            sys.exit(f"  ⏸ '{name}' 은 대화형 stage 예요. 대화형 세션에서 진행 후 advance 하세요.")
         if not action.startswith("/"):
             # 명령 stage(commit-push 등)는 메시지·판단이 필요해 headless 자동화 대상이 아님.
             sys.exit(f"  ⏸ '{name}' 은 명령 stage 예요. 직접 실행 후 advance:\n    {action}")
         print(f"  ▶ {name}: {action}")
-        prompt = f"{action} — phase '{doc['phase']}' 작업."
+        prompt = f"{action} — phase '{doc['phase']}' {name} 작업. {s.get('hint', '')}".rstrip()
         r = subprocess.run(
             ["claude", "-p", "--dangerously-skip-permissions", prompt],
             cwd=str(ROOT), capture_output=True, text=True, timeout=1800,
@@ -238,27 +274,65 @@ def cmd_run(arg):
         doc = mark_advance(doc)
         _write(f, doc)
         print(f"  ✓ {name}")
+        if name == "implement-red":
+            # RED 의 성공 조건(올바른 이유로 실패하는 테스트)은 exit code 로 판정 불가 —
+            # 사람이 확인한 뒤 다시 run 으로 이어간다.
+            sys.exit("  ⏸ RED 완료 — 테스트가 올바른 이유로 실패하는지 확인 후 다시 run 하세요.")
     print(f"  ✓ '{doc['phase']}' 완료.")
 
 
 def selftest():
+    import io
+    from contextlib import redirect_stdout
+
     doc = new_phase_doc("데모-phase")
     assert doc["branch"] == "데모-PHASE"
-    assert doc["cursor"] == 0 and len(doc["stages"]) == len(STAGES)
-    for i in range(len(STAGES)):
+    assert doc["cursor"] == 0
+    # 기본 doc: TDD on — implement 가 red/green 으로 splice 되어 11개.
+    assert [s["name"] for s in doc["stages"]] == [
+        "discuss", "plan", "plan-review-ceo", "plan-review-eng", "approve",
+        "implement-red", "implement-green", "verify", "commit-push", "make-pr",
+        "compound",
+    ]
+    red, green = doc["stages"][5], doc["stages"][6]
+    assert red["action"] == "/ultrawork" and green["action"] == "/ultrawork"
+    assert red.get("hint") and green.get("hint")
+    assert doc["stages"][0].get("hint", "") == ""  # hint 는 red/green 전용 optional
+    for i in range(len(doc["stages"])):
         assert doc["cursor"] == i
         mark_advance(doc, summary=f"s{i}")
-    assert doc["cursor"] == len(STAGES)
+    assert doc["cursor"] == len(doc["stages"])
     assert "completed_at" in doc
     assert all(s["status"] == "completed" for s in doc["stages"])
     mark_advance(doc)  # 끝난 뒤 advance 는 no-op
-    assert doc["cursor"] == len(STAGES)
+    assert doc["cursor"] == len(doc["stages"])
+    no_tdd = new_phase_doc("데모", include_tdd=False)
+    names = [s["name"] for s in no_tdd["stages"]]
+    assert len(names) == 10 and "implement" in names
+    assert "implement-red" not in names and "implement-green" not in names
     no_rev = new_phase_doc("데모", include_review=False)
-    assert len(no_rev["stages"]) == len(STAGES) - len(REVIEW_STAGES)
+    assert len(no_rev["stages"]) == 9
     assert not any(s["name"] in REVIEW_STAGES for s in no_rev["stages"])
     no_comp = new_phase_doc("데모", include_compound=False)
-    assert len(no_comp["stages"]) == len(STAGES) - 1
+    assert len(no_comp["stages"]) == 10
     assert not any(s["name"] == COMPOUND_STAGE for s in no_comp["stages"])
+    # 인자 배선 조합 — positional swap 을 잡는다.
+    all_off = new_phase_doc("데모", include_review=False, include_compound=False,
+                            include_tdd=False)
+    assert [s["name"] for s in all_off["stages"]] == [
+        "discuss", "plan", "approve", "implement", "verify", "commit-push", "make-pr",
+    ]
+    # _show_next 출력: 대화형 안내(discuss)와 red hint.
+    fresh = new_phase_doc("데모")
+    buf = io.StringIO()
+    with redirect_stdout(buf):
+        _show_next(fresh)
+    assert "대화형" in buf.getvalue()
+    fresh["cursor"] = 5  # implement-red
+    buf = io.StringIO()
+    with redirect_stdout(buf):
+        _show_next(fresh)
+    assert "RED" in buf.getvalue()
     assert _slug("Share Fortune!!") == "share-fortune"
     print("selftest OK")
 
@@ -270,6 +344,7 @@ def main():
     p.add_argument("--no-review", action="store_true", help="plan-review(ceo/eng) stage 생략(안 물어봄)")
     p.add_argument("--no-worktree", action="store_true", help="worktree 없이 현재 체크아웃에서 진행")
     p.add_argument("--no-compound", action="store_true", help="compound stage 생략(/ce-compound 는 수동)")
+    p.add_argument("--no-tdd", action="store_true", help="TDD(red/green) 대신 단일 implement stage")
     p = sub.add_parser("status"); p.add_argument("phase", nargs="?")
     p = sub.add_parser("advance"); p.add_argument("phase", nargs="?"); p.add_argument("--summary")
     p = sub.add_parser("run"); p.add_argument("phase", nargs="?")
@@ -277,7 +352,7 @@ def main():
     a = ap.parse_args()
 
     if a.cmd == "init":
-        cmd_init(a.name, a.no_review, a.no_worktree, a.no_compound)
+        cmd_init(a.name, a.no_review, a.no_worktree, a.no_compound, a.no_tdd)
     elif a.cmd == "status":
         cmd_status(a.phase)
     elif a.cmd == "advance":
