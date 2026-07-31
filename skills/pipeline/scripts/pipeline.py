@@ -50,7 +50,7 @@ STAGES = [
     ("approve", "phases/<slug>/plan.md 를 사용자에게 승인받기"),
     ("implement", "/ultrawork"),
     ("verify", "/verify"),
-    ("commit-push", "git add -A && git commit && git push -u origin HEAD"),
+    ("commit-push", "커밋 범위 확인 후 git commit && git push -u origin HEAD"),
     ("make-pr", "/make-pr"),
     ("compound", "/ce-compound"),
 ]
@@ -182,6 +182,9 @@ def _show_next(doc: dict):
     elif s["action"].startswith("/"):
         print(f"    대화형: 이 스킬을 실행 후 `pipeline.py advance` 로 넘어가세요.")
     elif s["name"] == "commit-push":
+        # 변경분을 통째로 커밋하지 않는다 — 범위를 먼저 확인받는다 (issue #9).
+        print(f"    먼저 `git status --short` / `git diff --stat` 요약과 제안 메시지를 보여주고 확인받기:")
+        print(f"      이대로 전체 커밋 / 일부만 커밋 / 직전 커밋에 합치기(amend) / 건너뛰기")
         # 메시지는 임의가 아니라 Conventional Commits 규칙. git-master 위임이 제일 편함.
         print(f"    메시지 규칙: feat({doc['phase']}): <뭐 했는지>  (git-master/ce-commit 위임 권장)")
         print(f"    실행 후 `pipeline.py advance`.")
@@ -333,6 +336,11 @@ def selftest():
     with redirect_stdout(buf):
         _show_next(fresh)
     assert "RED" in buf.getvalue()
+    fresh["cursor"] = [s["name"] for s in fresh["stages"]].index("commit-push")
+    buf = io.StringIO()
+    with redirect_stdout(buf):
+        _show_next(fresh)
+    assert "일부만 커밋" in buf.getvalue()  # 통째 커밋 대신 범위를 물어본다
     assert _slug("Share Fortune!!") == "share-fortune"
     print("selftest OK")
 
