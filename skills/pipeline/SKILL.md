@@ -74,7 +74,7 @@ python3 <pipeline.py 경로> status
 - **스킬 stage** (`/plan`, `/plan-ceo-review`, `/plan-eng-review`, `/ultrawork`, `/verify`, `/make-pr`)
   → 그 스킬을 실행하고, 결과가 만족스러우면 `advance`.
 - **명령 stage** (`commit-push`)
-  → 커밋 메시지는 Conventional Commits (`feat(<slug>): <뭐 했는지>`). git-master 위임 권장. 커밋·푸시 후 `advance`.
+  → 변경분을 통째로 커밋하지 말고 **범위를 먼저 확인받아요**: `git status --short`/`git diff --stat` 요약과 제안 커밋 메시지를 보여준 뒤 AskUserQuestion 으로 `이대로 전체 커밋 / 일부만 커밋 / 직전 커밋에 합치기(amend) / 건너뛰기` 중 하나를 고르게 해요. 여러 stage 의 변경을 한 커밋으로 합쳐야 할 때가 있어서예요. 커밋 메시지는 Conventional Commits (`feat(<slug>): <뭐 했는지>`). git-master 위임 권장. 커밋·푸시 후 `advance` (건너뛰기면 커밋 없이 `advance`).
 - **stage 별 실행법**:
   - `discuss` (대화형): 이슈·요구사항을 자유 대화로 정리하고, 핵심 합의를 `advance --summary` 에 기록해요. 범위가 phase 이름·TDD 선택과 어긋나게 바뀌면 새 이름으로 재-init 해요(기존 worktree 정리 후); TDD 플래그를 바꿀 때도 재-init 해요.
   - `plan`: 계획을 `phases/<slug>/plan.md` 에 저장해요(커밋 대상 — approve·verify 의 기준 문서).
