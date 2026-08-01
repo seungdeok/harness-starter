@@ -4,7 +4,7 @@ tags: ["pipeline", "terminology", "harness"]
 created: 2026-08-01T14:16:25.309Z
 updated: 2026-08-01T14:16:25.309Z
 sources: []
-links: ["compound-engineering.md", "docs-vs-omc-wiki.md", "harness-plugin-scope-marketplace-sha.md"]
+links: ["compound-engineering.md", "docs-vs-omc-wiki.md", "harness-plugin-scope-marketplace-sha.md", "worktree-phase-traps-cwd.md", "git-diff-scope-and-merge-conflict-precheck-pr.md"]
 category: reference
 confidence: medium
 schemaVersion: 1
@@ -63,5 +63,5 @@ schemaVersion: 1
 plan.md 가 PR diff 에 안 보이므로 **PR 본문에 계획 요약을 넣는 것**으로 대체한다.
 
 ## 관련
-[[compound-engineering]] · [[docs-vs-omc-wiki]] · [[harness-plugin-scope-marketplace-sha]]
+[[compound-engineering]] · [[docs-vs-omc-wiki]] · [[harness-plugin-scope-marketplace-sha]] · [[worktree-phase-traps-cwd]] · [[git-diff-scope-and-merge-conflict-precheck-pr]]
 

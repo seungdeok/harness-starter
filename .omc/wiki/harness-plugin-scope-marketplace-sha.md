@@ -4,7 +4,7 @@ tags: ["plugin", "terminology", "setup", "harness"]
 created: 2026-08-01T14:17:24.137Z
 updated: 2026-08-01T14:17:24.137Z
 sources: []
-links: ["pipeline-phase-slug-stage-worktree.md", "docs-vs-omc-wiki.md"]
+links: ["pipeline-phase-slug-stage-worktree.md", "docs-vs-omc-wiki.md", "ci-coverage-facts-validate.md", "shell-and-cli-environment-traps-zsh-glob-gh-projects-classic.md"]
 category: architecture
 confidence: medium
 schemaVersion: 1
@@ -68,5 +68,5 @@ harness 는 **남의 레포에서 도는** plugin 이다. 그래서 뿌리는 �
 따라서 **루트 `CLAUDE.md` 를 고치면 `skills/setup/templates/CLAUDE-section.md` 미러도 같이 고쳐야 하지만**, 대상 레포에 해당하지 않는 규범(예: CHANGELOG 규칙 — 대상은 plugin 이 아니다)은 미러에 넣지 않는다.
 
 ## 관련
-[[pipeline-phase-slug-stage-worktree]] · [[docs-vs-omc-wiki]]
+[[pipeline-phase-slug-stage-worktree]] · [[docs-vs-omc-wiki]] · [[ci-coverage-facts-validate]] · [[shell-and-cli-environment-traps-zsh-glob-gh-projects-classic]]
 
