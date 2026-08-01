@@ -77,7 +77,7 @@ python3 <pipeline.py 경로> status
   → 변경분을 통째로 커밋하지 말고 **범위를 먼저 확인받아요**: `git status --short`/`git diff --stat` 요약과 제안 커밋 메시지를 보여준 뒤 AskUserQuestion 으로 `이대로 전체 커밋 / 일부만 커밋 / 직전 커밋에 합치기(amend) / 건너뛰기` 중 하나를 고르게 해요. 여러 stage 의 변경을 한 커밋으로 합쳐야 할 때가 있어서예요. 커밋 메시지는 Conventional Commits (`feat(<slug>): <뭐 했는지>`). git-master 위임 권장. 커밋·푸시 후 `advance` (건너뛰기면 커밋 없이 `advance`).
 - **stage 별 실행법**:
   - `discuss` (대화형): 이슈·요구사항을 자유 대화로 정리하고, 핵심 합의를 `advance --summary` 에 기록해요. 범위가 phase 이름·TDD 선택과 어긋나게 바뀌면 새 이름으로 재-init 해요(기존 worktree 정리 후); TDD 플래그를 바꿀 때도 재-init 해요.
-  - `plan`: 계획을 `phases/<slug>/plan.md` 에 저장해요(커밋 대상 — approve·verify 의 기준 문서).
+  - `plan`: 계획을 `phases/<slug>/plan.md` 에 저장해요(approve·verify 의 기준 문서 — 로컬 작업 산출물이라 커밋하지 않아요).
   - `approve` (대화형): `phases/<slug>/plan.md` 를 AskUserQuestion 으로 승인받아요. 거절되면 cursor 롤백 없이 그 자리에서 문서를 수정하고 다시 승인받아요.
   - `implement-red`: 실패하는 테스트만 작성하고, 올바른 이유로 실패하는지 확인한 뒤 `advance`. 구현 코드는 작성하지 않아요.
   - `implement-green`: 최소 구현으로 테스트를 통과시킨 뒤 `advance`. red 에서 만든 테스트를 수정해서 통과시키는 건 금지예요.

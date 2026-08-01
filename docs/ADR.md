@@ -30,3 +30,11 @@
 **결정**: pipeline stage 를 `discuss → plan → [ceo] → [eng] → approve → implement-red/green(TDD, 기본; --no-tdd 시 implement 단일) → verify → commit-push → make-pr` 로 재구성한다. red/green 은 `STAGES` 상수가 아니라 doc-build(`new_phase_doc`) 시 `implement` 자리에 splice 한다. discuss/approve 는 opt-out 없는 필수 human gate 다(계획 승인이 파이프라인의 목적이라 생략 대상이 아니다). headless `run` 은 resume 전용 헬퍼로 격하한다(discuss·approve·implement-red 직후 멈춘다). `verify` 는 `/verify` — `implement` 와 함께 oh-my-claudecode(OMC) 하드 의존이다. plan 산출물은 `phases/<slug>/plan.md` 로 커밋 대상화한다(`.gitignore` 를 `phases/*/*` + `!phases/*/plan.md` 로 재구성).
 **이유**: 계획 승인 게이트·TDD·증거 기반 검증 단계 부재를 해소하면서 브랜치/worktree 병렬성을 유지한다.
 **트레이드오프**: 모든 phase 에 human stop 2개(discuss/approve)가 추가된다 → 의도된 설계. `run` 자동화 범위가 축소된다 → resume 전용으로 문서화. OMC 의존을 명시화한다. CLAUDE.md §5 hook 승격 지침은 issue #7 과 무관한 사용자 요청 rider 로 별도 커밋한다.
+**후속**: "plan 산출물을 `phases/<slug>/plan.md` 로 커밋 대상화한다(`.gitignore` 를 `phases/*/*` + `!phases/*/plan.md` 로 재구성)" 조항은 ADR-005 로 뒤집혔다.
+
+---
+
+### ADR-005: `phases/` 를 커밋 대상에서 제외하고 gitignore 규칙도 두지 않는다 (issue #11)
+**결정**: `phases/<slug>/` 하위 전체(`plan.md` 포함)를 커밋하지 않는다. 동시에 `.gitignore` 에서 phases 관련 규칙(`phases/*/*` + `!phases/*/plan.md`)을 **제거**하고, `/harness:setup` 도 대상 레포에 `phases/` 를 뿌리지 않는다(gitignore 블록은 `.claude/worktrees/` + `.claude/settings.local.json` 두 줄). 방침은 도구가 아니라 CLAUDE.md §6 규범으로 강제한다. ADR-004 의 plan.md 커밋 대상화 조항을 대체한다.
+**이유**: issue #11 은 setup 이 뿌린 `phases/` 가 plan.md 추적을 막는 문제였다. git 은 디렉토리가 제외되면 하위를 `!` 로 되살릴 수 없어 두 줄 + 재포함 트릭이 필요했고, 그 규칙을 대상 레포마다 정확히 전파하는 비용이 얻는 것보다 컸다. plan.md 를 커밋 대상에서 빼면 규칙 자체가 불필요해져 문제가 증상이 아니라 원인에서 사라진다.
+**트레이드오프**: `phases/` 가 `git status` 에 항상 untracked 로 뜬다 → 의도된 상태로 CLAUDE.md §6 에 명시하고, `git add .` 금지·commit-push stage 의 범위 확인 절차로 오커밋을 막는다. plan.md 가 PR diff 에 안 보여 리뷰어가 계획 문서를 볼 수 없다 → PR 본문에 계획 요약을 넣는 것으로 대체. 검토했으나 버린 안: lefthook pre-commit 차단(대상 레포에 런타임 의존 강요, 설치 보장 불가), 상태 파일을 `.git/harness/<slug>/` 로 이동(`pipeline.py` 변경이 따라와 범위 초과 — 재검토 여지 있음).
