@@ -1,0 +1,23 @@
+name: plugin-validate
+
+# 매니페스트가 바뀔 때만 실행한다. Claude Code CLI 를 버전 고정 없이 설치하므로,
+# 매니페스트와 무관한 PR 이 CLI 릴리스에 영향받지 않게 paths 로 격리한다 (ADR-010).
+on:
+  push:
+    branches: [main]
+    paths: ['.claude-plugin/**']
+  pull_request:
+    paths: ['.claude-plugin/**']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  plugin-validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm i -g @anthropic-ai/claude-code
+      - run: claude plugin validate .
