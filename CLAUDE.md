@@ -95,7 +95,10 @@ Compound Engineering 루프: `brainstorm → plan → work → simplify → revi
 
 ## Project Docs
 
+`docs/` 는 사람이 쓰고 리뷰하는 **규범**, `.omc/wiki/` 는 OMC 가 세션을 넘겨 쌓는 **사실** 이에요.
+
 @docs/PRD.md
 @docs/ADR.md
 @docs/ARCHITECTURE.md
 @docs/solutions/GUARDRAILS.md
+@.omc/wiki/index.md

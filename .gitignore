@@ -33,7 +33,15 @@ lerna-debug.log*
 .vite/
 
 # oh-my-claudecode runtime/generated state
-.omc/
+# .omc/ 가 아니라 .omc/* — 디렉토리를 제외하면 하위를 ! 로 되살릴 수 없어요 (ADR-005).
+.omc/*
+# wiki 는 세션을 넘겨 쌓이는 지식이라 커밋해요 — re-clone 으로 날리지 않기 위해.
+# .omc/.gitignore 도 함께 커밋해요 — OMC 가 매번 `wiki/`(무시)로 되돌리는 걸 막는 파일이라
+# 이게 없으면 clone 직후 첫 OMC 실행에서 wiki 가 다시 무시돼요.
+!.omc/wiki/
+!.omc/.gitignore
+# 하위 디렉토리에 생긴 .omc 는 잘못된 cwd 로 실행된 흔적이라 전부 무시해요.
+*/**/.omc/
 .claude/.cc-writes/
 
 # Claude Code local (개인) 설정 — 플러그인 활성화 등, 커밋하지 않아요
