@@ -5,5 +5,6 @@
     "name": "seungdeok"
   },
   "homepage": "https://github.com/seungdeok/harness-starter",
-  "repository": "https://github.com/seungdeok/harness-starter"
+  "repository": "https://github.com/seungdeok/harness-starter",
+  "license": "MIT"
 }

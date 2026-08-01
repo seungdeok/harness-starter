@@ -35,6 +35,8 @@ setup 이 아래 세 가지를 묻고 초기화해요:
 
 만 실행하면 최신으로 갱신돼요. (프로젝트 scope 로 복사한 `scripts/pipeline.py` 는 `/harness:setup` 재실행으로 갱신)
 
+무엇이 바뀌었는지는 [`CHANGELOG.md`](CHANGELOG.md) 에서 확인해요.
+
 ## docs 경로 가이드
 
 - setup 에서 답한 경로가 `.claude/settings.local.json` 의 `env.HARNESS_DOCS_PATH` 에 저장돼요 (gitignore 대상 — 개발자 로컬 전용, 팀원도 각자 setup 실행).

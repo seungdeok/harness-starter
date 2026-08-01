@@ -87,6 +87,17 @@ Compound Engineering 루프: `brainstorm → plan → work → simplify → revi
 `.gitignore` 로 막지 않으므로 `git status` 에 untracked 로 뜬다. 이건 의도된 상태다.
 커밋할 때 `git add .` / `git add -A` 로 쓸어 담지 말고, 변경 파일을 명시해서 스테이징한다.
 
+## 7. 사용자 영향 있는 변경은 `CHANGELOG.md` 에 한 줄
+
+이 레포는 Claude Code plugin 으로 배포된다. `plugin.json` 에 `version` 이 없어 커밋 SHA 가 곧 버전이므로(ADR-002),
+`/plugin marketplace update` 를 돌린 사용자가 무엇이 바뀌었는지 알 수 있는 곳은 `CHANGELOG.md` 뿐이다.
+
+스킬 동작·파이프라인 stage·설정 키처럼 **사용자가 체감하는 변경**은 `CHANGELOG.md` 맨 위 날짜 절에 한 줄 남기고
+이슈/PR 번호를 단다. 내부 리팩터링·오탈자·문서 정리는 적지 않는다. 자동으로 쌓이지 않으니 같은 PR 안에서 함께 고친다.
+
+**`version` 필드는 추가하지 않는다.** 추가하면 플러그인 캐시 경로가 SHA 대신 버전이 되어 `/harness:setup` 의
+project scope 가 거부된다(ADR-008, ADR-010). `claude plugin validate` 가 내는 version 경고는 의도된 것이다.
+
 ---
 
 **These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.

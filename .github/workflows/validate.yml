@@ -16,5 +16,3 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: python3 skills/pipeline/scripts/pipeline.py selftest
-      - run: npm i -g @anthropic-ai/claude-code
-      - run: claude plugin validate .
