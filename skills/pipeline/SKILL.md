@@ -128,9 +128,14 @@ cd <메인 레포 루트> && python3 <pipeline.py 경로> done <slug>
 `done` 은 worktree 를 지우고 `git branch -d` 로 브랜치를 정리해요 — 머지 안 된 브랜치는 삭제하지 않고 경고만 해요.
 `phases/<slug>/` 외에 커밋 안 된 변경이 남아 있으면 아무것도 지우지 않고 멈춰요.
 
-**`done` 은 compound 를 먼저 확인해요.** 그 브랜치가 `<docs>/solutions/` 를 하나도 안 건드렸으면
-아무것도 지우지 않고 거부해요 — worktree 가 사라지면 그 작업은 아무것도 남기지 못하니까요.
-그러니 정리 **전에** `/ce-compound` 를 돌려요. 남길 게 정말 없으면 `done <slug> --force` 로 건너뛰어요.
+**`done` 은 교훈이 `origin/<base>` 에 **도착**했는지 먼저 확인해요.** 두 단계로 봐요:
+
+1. 그 브랜치가 `<docs>/solutions/` 를 하나도 안 건드렸으면 → `compound 미수행` 으로 거부.
+2. 건드렸어도 그 노트가 `origin/<base>` 에 없으면(커밋만 하고 push·머지 안 됨) → 거부.
+
+둘 다 **아무것도 지우지 않아요** — worktree 가 사라지면 그 작업은 아무것도 남기지 못하니까요.
+그러니 정리 **전에** `/ce-compound` 를 돌리고, 그 커밋을 push 해서 머지까지 끝내요.
+남길 게 정말 없으면 `done <slug> --force` 로 건너뛰어요.
 origin 이 없어 base 를 못 찾는 레포에서는 차단 대신 경고만 하고 진행해요.
 
 교훈 중 재발 방지 규칙이 강제가 꼭 필요한 경우에만 Claude Code hook 으로도 승격해요.
