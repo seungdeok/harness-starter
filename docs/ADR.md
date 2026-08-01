@@ -38,3 +38,10 @@
 **결정**: `phases/<slug>/` 하위 전체(`plan.md` 포함)를 커밋하지 않는다. 동시에 `.gitignore` 에서 phases 관련 규칙(`phases/*/*` + `!phases/*/plan.md`)을 **제거**하고, `/harness:setup` 도 대상 레포에 `phases/` 를 뿌리지 않는다(gitignore 블록은 `.claude/worktrees/` + `.claude/settings.local.json` 두 줄). 방침은 도구가 아니라 CLAUDE.md §6 규범으로 강제한다. ADR-004 의 plan.md 커밋 대상화 조항을 대체한다.
 **이유**: issue #11 은 setup 이 뿌린 `phases/` 가 plan.md 추적을 막는 문제였다. git 은 디렉토리가 제외되면 하위를 `!` 로 되살릴 수 없어 두 줄 + 재포함 트릭이 필요했고, 그 규칙을 대상 레포마다 정확히 전파하는 비용이 얻는 것보다 컸다. plan.md 를 커밋 대상에서 빼면 규칙 자체가 불필요해져 문제가 증상이 아니라 원인에서 사라진다.
 **트레이드오프**: `phases/` 가 `git status` 에 항상 untracked 로 뜬다 → 의도된 상태로 CLAUDE.md §6 에 명시하고, `git add .` 금지·commit-push stage 의 범위 확인 절차로 오커밋을 막는다. plan.md 가 PR diff 에 안 보여 리뷰어가 계획 문서를 볼 수 없다 → PR 본문에 계획 요약을 넣는 것으로 대체. 검토했으나 버린 안: lefthook pre-commit 차단(대상 레포에 런타임 의존 강요, 설치 보장 불가), 상태 파일을 `.git/harness/<slug>/` 로 이동(`pipeline.py` 변경이 따라와 범위 초과 — 재검토 여지 있음).
+
+---
+
+### ADR-006: make-pr·make-issue 는 레포 템플릿을 읽고, 없을 때만 스킬 내장 형식으로 fallback (issue #12)
+**결정**: 두 스킬이 본문을 만들기 전에 레포 템플릿을 탐색한다. PR 은 단일 파일(`.github`/`docs`/루트의 `pull_request_template.md`)과 다중 디렉토리(`.github/PULL_REQUEST_TEMPLATE/*.md`)를 모두 훑고, 이슈는 `.github/ISSUE_TEMPLATE/*.md` 와 레거시 단일 파일을 훑는다. 찾으면 헤딩 구조를 그대로 두고 내용만 채우고, 못 찾을 때만 스킬에 명시된 기본 형식을 쓴다. 이슈 템플릿은 `.md` 만 지원하고 `.yml`(Issue Forms)은 fallback 으로 보낸다. 라벨은 `gh label list` 로 존재를 확인해 있는 것만 붙이고, 없으면 조용히 생략한다(자동 생성하지 않는다). 탐색 명령은 `ls`+glob 이 아니라 `find` 로 통일한다.
+**이유**: 스킬 서술("레포 템플릿 형식에 맞춰")과 실제 동작(하드코딩 본문)이 어긋나 있었다. harness 는 다른 레포에 설치되는 plugin 이라, 템플릿 구조가 다른 레포에서 조용히 틀린 본문을 만들어낸다. `gh pr create --template` 위임은 설치된 gh 2.7.0 에 없고 대화형 에디터 prefill 전용이라 비대화형 `--body` 흐름과 충돌해 탈락했다. 탐색 로직을 공유 문서로 DRY 화하는 안도 호출 지점이 2곳뿐이고 plugin 스킬이 각자 로드되어 상대 참조가 보장되지 않아 탈락했다. `find` 통일은 zsh 에서 glob 매칭 실패가 `2>/dev/null` 을 뚫고 에러를 내기 때문이다.
+**트레이드오프**: `.yml` Issue Forms 를 쓰는 레포는 여전히 fallback 본문을 받는다 → 폼 파싱은 구조 변환이 필요해 범위에서 제외. 라벨을 조용히 생략하므로 의도한 라벨이 안 붙어도 사용자가 모를 수 있다 → 생성 전 최종 확인 단계에서 라벨을 함께 보여주는 것으로 완화. `gh label list --limit 100` 이라 라벨이 100개를 넘는 레포는 뒤쪽이 누락될 수 있다.
