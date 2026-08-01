@@ -119,6 +119,15 @@ make-pr stage 를 `advance` 하면 파이프라인은 여기서 끝이에요. **
 
 > 파이프라인 완료(make-pr까지). 교훈을 남기려면 `/ce-compound` 를 직접 실행하세요.
 
+전용 worktree 를 썼다면 **PR 이 머지된 뒤** 정리도 안내해요 (안 하면 worktree·브랜치가 계속 쌓여요):
+
+```bash
+cd <메인 레포 루트> && python3 <pipeline.py 경로> done <slug>
+```
+
+`done` 은 worktree 를 지우고 `git branch -d` 로 브랜치를 정리해요 — 머지 안 된 브랜치는 삭제하지 않고 경고만 해요.
+`phases/<slug>/` 외에 커밋 안 된 변경이 남아 있으면 아무것도 지우지 않고 멈춰요.
+
 교훈 중 재발 방지 규칙이 강제가 꼭 필요한 경우에만 Claude Code hook 으로도 승격해요.
 
 ## 주의
