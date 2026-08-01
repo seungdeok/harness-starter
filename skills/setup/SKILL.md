@@ -101,6 +101,7 @@ templates 원본은 이 스킬 폴더의 `templates/` 에 있어요.
   }
   ```
 
+- **의존 스킬**: `/harness:pipeline` 은 oh-my-claudecode(`/plan`·`/ultrawork`·`/verify`)와 gstack(plan review) 스킬을 써요. 없으면 해당 stage 가 막히는데, 파이프라인이 시작 전에 점검하고 안내해요.
 - **업데이트**: `/plugin marketplace update` 만 하면 최신 커밋으로 갱신돼요. (프로젝트 scope 로 복사한 `scripts/pipeline.py` 는 자동 갱신되지 않으니, 갱신하려면 `/harness:setup` 을 다시 실행해요.)
 
 ## 주의

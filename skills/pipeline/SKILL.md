@@ -31,7 +31,28 @@ Stages: `discuss → plan → [plan-review-ceo] → [plan-review-eng] → approv
 
 스크립트는 **cwd 기준 git root** 에 phase 를 만들므로, 어느 복사본이든 실행 위치(cwd)가 곧 대상 레포예요.
 
-## 0. 시작 전 질문 (필수)
+## 0. 시작 전 점검과 질문 (필수)
+
+### 0-1. 하드 의존 스킬 점검
+
+`init` 은 worktree·브랜치를 먼저 만들기 때문에, 스킬 누락을 stage 도달 시점에 발견하면 이미 늦어요.
+**init 전에** 사용 가능한 스킬 목록에서 아래를 확인해요. 목록에 뜨는 식별자 그대로 찾아요 — OMC 는
+`oh-my-claudecode:` 접두어가 붙고, gstack 은 프로젝트 `.claude/skills/` 에 있어 접두어가 없어요.
+
+| stage | 스킬 | 목록상 이름 | 없을 때 |
+| --- | --- | --- | --- |
+| plan | `/plan` | `oh-my-claudecode:plan` | 대안 없음 |
+| implement(-red/-green) | `/ultrawork` | `oh-my-claudecode:ultrawork` | 대안 없음 |
+| verify | `/verify` | `oh-my-claudecode:verify` | 대안 없음 |
+| plan-review-ceo | `/plan-ceo-review` | `plan-ceo-review` | `--no-review` |
+| plan-review-eng | `/plan-eng-review` | `plan-eng-review` | `--no-review` |
+
+- **OMC 스킬이 하나라도 없으면** 어느 stage 가 막히는지 알리고, AskUserQuestion 으로
+  `설치 후 다시 시작 / 그대로 진행` 을 물어요. 임의로 init 을 강행하지 않아요.
+- **gstack 스킬이 없으면** 아래 plan review 질문을 **묻지 않고** `--no-review` 로 고정해요.
+  고를 수 없는 걸 선택지에 남기지 않아요.
+
+### 0-2. 시작 전 질문
 
 `init` 하기 **전에 AskUserQuestion 으로 세 가지를 먼저** 물어요.
 
