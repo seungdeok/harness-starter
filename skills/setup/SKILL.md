@@ -18,6 +18,8 @@ plugin 은 설치 시점에 스크립트를 못 돌리므로, 이 스킬이 프�
 결과물: `.claude/settings.local.json` 의 `env.HARNESS_*`(설정) + scope 에 따른 파일 scaffold.
 
 **절대 규칙: 기존 파일을 덮어쓰지 않아요.** CLAUDE.md 는 append 만, scaffold 는 없는 파일만 생성.
+유일한 예외는 프로젝트 scope 의 `scripts/pipeline.py` 예요 — 이건 plugin 번들의 복사본이라 갱신 대상이고,
+확인을 받은 뒤에만 덮어써요 (§3 참고).
 
 ## 1. 질문 (AskUserQuestion, 필수)
 
@@ -65,7 +67,35 @@ env 변수)는 그대로 두고 `HARNESS_*` 만 추가/갱신해요. 덮어쓰�
 templates 원본은 이 스킬 폴더의 `templates/` 에 있어요.
 
 **프로젝트 scope:**
-1. 이 스킬 폴더 기준 `../pipeline/scripts/pipeline.py` 를 `<프로젝트>/scripts/pipeline.py` 로 복사.
+
+1. 이 스킬 폴더 기준 `../pipeline/scripts/pipeline.py` 를 `<프로젝트>/scripts/pipeline.py` 로 복사하되,
+   **출처 헤더 2줄을 넣어요**. 복사본은 plugin 업데이트를 자동으로 못 받으니, 파일 자신이 출처를 들고 있어야
+   얼마나 낡았는지 알 수 있어요.
+
+   **a. plugin SHA 확인.** 이 스킬의 base directory 는 `~/.claude/plugins/cache/harness/harness/<sha>/skills/setup`
+   형태예요. `harness/harness/` 바로 다음 디렉토리명이 커밋 SHA(12자리 hex)예요. 캐시는 git 레포가 아니라
+   `git rev-parse` 는 못 써요.
+   **그 자리가 12자리 hex 가 아니면(= plugin 으로 설치된 게 아니면) 복사하지 말고 멈춰요.** 이렇게 안내해요:
+   > pipeline.py 의 출처(plugin SHA)를 확인할 수 없어 프로젝트 scope 복사를 건너뜁니다.
+   > 추적 불가능한 복사본은 만들지 않아요. plugin 으로 설치한 뒤 다시 실행하거나, 글로벌 scope 를 쓰세요.
+
+   docs 템플릿(2번)은 그대로 진행해도 돼요.
+
+   **b. 헤더 삽입.** shebang(`#!/usr/bin/env python3`) 바로 아래에 이 2줄을 넣어요. 날짜는 복사하는 날(`YYYY-MM-DD`):
+
+   ```python
+   # harness plugin <sha> 에서 복사 (<YYYY-MM-DD>) — 갱신: /harness:setup 재실행
+   # 직접 수정하지 마세요 — 재실행 시 덮어쓰입니다.
+   ```
+
+   **이 2줄 외에는 원본을 한 글자도 바꾸지 않아요.** (주석이라 실행에 영향 없고, docstring 도 그대로 유지돼요.)
+
+   **c. 이미 `scripts/pipeline.py` 가 있으면** 헤더의 SHA 와 지금 번들 SHA 를 비교해요:
+   - **같으면** 최신이니 건너뛰고 그렇다고 알려줘요.
+   - **다르거나 헤더가 없으면**(헤더 도입 전 구본) 두 SHA 를 보여주고 갱신할지 물어봐요.
+     묻기 전에 그 파일이 git 에서 **uncommitted 수정 상태인지 확인**하고, 그렇다면 확인 프롬프트에
+     "로컬 수정이 있습니다 — 덮어쓰면 사라집니다"를 함께 띄워요. 확인받은 뒤에만 덮어써요.
+
 2. `<docsPath>/` 에 `templates/PRD.md`·`ADR.md`·`ARCHITECTURE.md` 복사, `<docsPath>/solutions/` 에 `templates/solutions-README.md`(→ `README.md`)·`templates/GUARDRAILS.md`(→ `GUARDRAILS.md`) 복사. **이미 있는 파일은 건너뛰고 뭘 건너뛰었는지 알려줘요.**
 
 **글로벌 scope:** 복사·scaffold 없음. docs 템플릿이 필요하면 원하는지 한 번 물어보고, 원할 때만 위 2번을 수행해요.
@@ -102,7 +132,7 @@ templates 원본은 이 스킬 폴더의 `templates/` 에 있어요.
   ```
 
 - **의존 스킬**: `/harness:pipeline` 은 oh-my-claudecode(`/plan`·`/ultrawork`·`/verify`)와 gstack(plan review) 스킬을 써요. 없으면 해당 stage 가 막히는데, 파이프라인이 시작 전에 점검하고 안내해요.
-- **업데이트**: `/plugin marketplace update` 만 하면 최신 커밋으로 갱신돼요. (프로젝트 scope 로 복사한 `scripts/pipeline.py` 는 자동 갱신되지 않으니, 갱신하려면 `/harness:setup` 을 다시 실행해요.)
+- **업데이트**: `/plugin marketplace update` 만 하면 최신 커밋으로 갱신돼요. (프로젝트 scope 로 복사한 `scripts/pipeline.py` 는 자동 갱신되지 않아요. 파일 첫 줄들의 출처 헤더로 어느 SHA 에서 언제 복사했는지 확인할 수 있고, 갱신하려면 `/harness:setup` 을 다시 실행해요 — 최신이면 건너뛰고, 다르면 물어본 뒤 덮어써요.)
 
 ## 주의
 
