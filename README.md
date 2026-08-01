@@ -120,3 +120,4 @@ claude --plugin-dir .
 ```
 
 수정 후에는 `/reload-plugins`, 매니페스트 검증은 `claude plugin validate .`.
+
