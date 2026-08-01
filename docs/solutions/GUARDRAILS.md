@@ -16,3 +16,5 @@ compound 단계에서 새 규칙이 생기면 여기에 추가하고, 다음 작
 - [2026-08-01] 매칭이 없을 수 있는 조회에는 `ls *.ext` 대신 `find <dir> -name '*.ext'` 를 쓴다 — zsh 의 glob nomatch 에러는 `2>/dev/null` 로 안 막힌다. (근거: skill-prose-commands.md)
 - [2026-08-01] CLI 플래그는 `--help` 로 설치된 버전에 실제 있는지 확인한다 — 공식 문서에 있어도 구버전엔 없다. (근거: skill-prose-commands.md)
 - [2026-08-01] 문서가 "레포의 X 형식에 맞춰"라고 서술하면 X 를 읽는 단계가 절차에 실제로 있는지 대조한다 — plugin 은 남의 레포에서 도니 "우리 레포에서 잘 됨"은 검증이 아니다. (근거: skill-prose-commands.md)
+- [2026-08-01] worktree phase 의 `pipeline.py status`/`advance` 는 매번 `cd <worktree> && ...` 한 줄로 실행한다 — 앞 명령의 셸 cwd 에 기대면 활성 phase 가 하나뿐인 다른 레포에서 조용히 엉뚱한 phase 가 advance 된다. (근거: pipeline-worktree-cwd.md)
+- [2026-08-01] 에이전트가 컨텍스트로 이미 갖고 있는 정보(가용 스킬 목록 등)는 코드로 재구현하지 않는다 — 캐시 경로·설치 상태에 종속된 탐지는 드리프트한다. (근거: ADR-007)
