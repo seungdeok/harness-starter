@@ -26,7 +26,7 @@ compound 만 CLAUDE.md 5장이 `/ce-compound` 를 지정.
 | implement-red    | `/ultrawork` (OMC, TDD)                  | 실패하는 테스트만 작성, 올바른 이유로 실패 확인  |
 | implement-green  | `/ultrawork` (OMC, TDD)                  | 최소 구현으로 테스트 통과 (red 테스트 수정 금지) |
 | verify           | `/verify` (OMC)                          | `plan.md` 수용 기준·실제 동작을 증거로 검증      |
-| commit-push      | `git add -A && git commit && git push`   | 커밋(=lefthook 이 lint 실행) + 푸시              |
+| commit-push      | 범위 확인 → `git add <파일> && commit && push` | 커밋 범위를 먼저 확인받고(`git add -A` 금지) 푸시 |
 | make-pr          | `/make-pr`                               | 현재 브랜치로 draft PR                           |
 | compound         | `/ce-compound`                           | 교훈을 `docs/solutions/` 에 기록 (CLAUDE.md 5장) |
 
@@ -68,7 +68,8 @@ python3 <pipeline.py> status
 python3 <pipeline.py> advance --summary "공유 기능 요구사항 합의"
 
 # 4. status → advance 를 stage 수만큼 반복. commit-push 는 스킬 대신 명령이라 직접 실행:
-git add -A && git commit && git push -u origin HEAD && python3 <pipeline.py> advance
+#    (phases/ 가 untracked 로 뜨니 `git add -A` 금지 — 커밋할 파일을 명시. CLAUDE.md §6)
+git add <변경 파일…> && git commit && git push -u origin HEAD && python3 <pipeline.py> advance
 
 # 5. 마지막 stage 까지 advance 하면 phase 완료. 다음 작업은 다시 init 부터.
 ```
@@ -94,7 +95,7 @@ git add -A && git commit && git push -u origin HEAD && python3 <pipeline.py> adv
 python3 <pipeline.py> run   # red 실행 → 멈춤(실패 확인) → 다시 run → green·verify → commit-push 앞에서 멈춤
 ```
 
-`run` 은 스킬 stage 마다 `phases/<slug>/stage-<name>-output.json`(gitignore 됨) 에 로그를 남기고,
+`run` 은 스킬 stage 마다 `phases/<slug>/stage-<name>-output.json` 에 로그를 남기고,
 멈춘 자리에서 사람이 처리 후 다시 `run`/`advance` 하면 이어서 진행해요.
 
 ## phase.json
@@ -108,7 +109,8 @@ python3 <pipeline.py> run   # red 실행 → 멈춤(실패 확인) → 다시 ru
 ```
 
 `cursor` 가 현재 stage 인덱스예요. red/green record 는 `hint` 필드(TDD 지시문)를 추가로 가져요.
-phase.json 은 gitignore 로 추적 제외 — 커밋되는 산출물은 `phases/<slug>/plan.md` 뿐이에요.
+`phases/` 아래는 `plan.md` 까지 전부 커밋하지 않아요. gitignore 규칙도 두지 않아서 `git status` 에
+untracked 로 뜨는 게 정상이에요 (ADR-005, CLAUDE.md §6).
 
 ## 로직 검증
 

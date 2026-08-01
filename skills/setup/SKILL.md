@@ -63,6 +63,8 @@ env 변수)는 그대로 두고 `HARNESS_*` 만 추가/갱신해요. 덮어쓰�
 ## 3. scope 별 scaffold
 
 templates 원본은 이 스킬 폴더의 `templates/` 에 있어요.
+**복사할 때 파일 안의 `{{DOCS_PATH}}` 를 답변한 docs 경로로 치환해요** (`GUARDRAILS.md`·`solutions-README.md`·
+`CLAUDE-section.md` 에 들어 있어요). 치환을 빠뜨리면 scaffold 가 없는 경로를 가리켜요.
 
 **프로젝트 scope:**
 1. 이 스킬 폴더 기준 `../pipeline/scripts/pipeline.py` 를 `<프로젝트>/scripts/pipeline.py` 로 복사.

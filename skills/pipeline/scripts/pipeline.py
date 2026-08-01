@@ -42,7 +42,6 @@ KST = timezone(timedelta(hours=9))
 # discuss/approve 는 INTERACTIVE_STAGES — 스킬도 명령도 아닌 대화형 stage.
 # implement/verify 는 OMC(/ultrawork·/verify) 하드 의존 (ADR-004).
 # 스킬 stage 를 추가/변경하면 pipeline SKILL.md §0-1 의 사전 점검 표도 함께 갱신한다.
-# lefthook 이 commit 시 lint 를 돌리므로 commit-push stage 가 곧 "pre-commit" 역할.
 STAGES = [
     ("discuss", "이슈·요구사항을 사용자와 자유 대화로 논의"),
     ("plan", "/plan"),
