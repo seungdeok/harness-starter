@@ -20,3 +20,5 @@ compound 단계에서 새 규칙이 생기면 여기에 추가하고, 다음 작
 - [2026-08-01] 에이전트가 컨텍스트로 이미 갖고 있는 정보(가용 스킬 목록 등)는 코드로 재구현하지 않는다 — 캐시 경로·설치 상태에 종속된 탐지는 드리프트한다. (근거: ADR-007)
 - [2026-08-01] 외부 도구(git·CLI·SDK)의 실패 조건에 설계가 걸려 있으면 plan 전에 임시 리소스로 한 번 돌려본다 — 문서에 없는 거부 조건이 정상 경로를 통째로 막을 수 있다. (근거: probe-constraints-before-planning.md)
 - [2026-08-01] probe·임시 산출물을 지울 때는 만든 것만 지운다 — 부모 디렉토리 `rmtree`/`rm -rf` 는 그 안의 추적 파일까지 가져간다. 지운 뒤 `git status` 로 예상 밖 삭제를 확인한다. (근거: probe-constraints-before-planning.md)
+- [2026-08-01] PR 범위는 `git diff origin/<base>...HEAD` (세 점, fetch 후)로 본다 — `git diff A..B` 는 두 tip 비교라 그 사이 전진한 남의 커밋이 내 diff 로 섞여 보이고, 로컬 `main` 은 worktree 작업 중 며칠씩 안 움직인다. (근거: pr-scope-two-dot-diff.md)
+- [2026-08-01] 커밋 전에 `git merge-tree --write-tree origin/<base> HEAD` 로 충돌을 미리 본다 — 작업트리를 안 건드리고 exit code 만 준다. 머지 불가 브랜치를 push 한 뒤 PR 단계에서 아는 건 늦다. (근거: pr-scope-two-dot-diff.md)
