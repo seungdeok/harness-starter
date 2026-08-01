@@ -106,10 +106,10 @@ project scope 가 거부된다(ADR-008, ADR-010). `claude plugin validate` 가 �
 
 ## Project Docs
 
-`docs/` 는 사람이 쓰고 리뷰하는 **규범**, `.omc/wiki/` 는 OMC 가 세션을 넘겨 쌓는 **사실** 이에요.
+`docs/` 가 이 프로젝트의 유일한 지식 저장소예요 — 사람이 쓰고 PR 로 리뷰해요.
+`.omc/` 는 OMC 의 런타임 상태라 커밋하지 않아요 (ADR-011).
 
 @docs/PRD.md
 @docs/ADR.md
 @docs/ARCHITECTURE.md
 @docs/solutions/GUARDRAILS.md
-@.omc/wiki/index.md
