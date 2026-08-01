@@ -1,10 +1,11 @@
 ---
 name: make-pr
 description: >
-  현재 브랜치로 draft(초안) Pull Request를 레포 PR 템플릿 형식으로 생성해요.
+  현재 브랜치로 draft(초안) Pull Request를 생성해요.
   다음 상황에서 활성화돼요: 사용자가 "draft pr 만들어줘", "초안 PR", "PR 올려줘",
   "PR 만들어줘", "풀리퀘 열어줘", "make pr", "create draft pr", "open pr"라고 말할 때.
-  `pull_request_template.md` 형식(개요·체크리스트)으로 `gh pr create --draft`를 실행해요.
+  레포에 PR 템플릿이 있으면 읽어서 그 구조로, 없으면 기본 형식(개요·체크리스트)으로
+  `gh pr create --draft`를 실행해요.
 argument-hint: "[제목]"
 user-invocable: true
 metadata:
@@ -13,11 +14,11 @@ metadata:
 
 # make-pr
 
-레포의 PR 템플릿(`.github/pull_request_template.md`) 형식에 맞춰 draft PR을 만들어요.
+레포에 PR 템플릿이 있으면 그 형식으로, 없으면 아래에 명시된 기본 형식으로 draft PR을 만들어요.
 
 ```
-브랜치·변경 확인 → stacked PR 여부(리뷰 단위 2+) → 문서 동기화 확인 → 개요 초안 → 확인 → gh pr create --draft
-                   └─ 예: gh-stack (gh stack init/submit)
+템플릿 탐색 → 브랜치·변경 확인 → stacked PR 여부(리뷰 단위 2+) → 문서 동기화 확인 → 본문 작성 → 확인 → gh pr create --draft
+                                 └─ 예: gh-stack (gh stack init/submit)
 ```
 
 ## 사전 조건
@@ -30,10 +31,22 @@ gh auth status || echo "gh 인증이 필요해요: gh auth login -h github.com"
 
 ## 절차
 
-### 0. base 브랜치·docs 경로 결정
+### 0. base 브랜치·docs 경로·PR 템플릿 결정
 
 - **base 브랜치**: `gh repo view --json defaultBranchRef -q .defaultBranchRef.name` 으로 감지해요 (실패 시 `main`). 아래의 `<base>` 는 전부 이 값이에요.
 - **docs 경로**: 환경변수 `HARNESS_DOCS_PATH` 를 읽고, 없으면 `.claude/settings.local.json` 의 `env.HARNESS_DOCS_PATH` 를 읽어요 (둘 다 없으면 `docs`). 아래의 `<docsPath>` 는 이 값이에요.
+- **PR 템플릿**: GitHub 이 인식하는 위치를 훑어요 — 단일 파일과 다중 템플릿 디렉토리 둘 다예요:
+
+  ```bash
+  find .github docs . -maxdepth 1 -iname 'pull_request_template.md' 2>/dev/null
+  find .github/PULL_REQUEST_TEMPLATE -name '*.md' 2>/dev/null
+  ```
+
+  (`ls` + glob 은 zsh 에서 매칭이 없을 때 `2>/dev/null` 로도 안 막히는 에러를 내니 `find` 로 통일해요.)
+
+  - 후보가 **하나면** 그 파일을 읽어서 써요.
+  - **여러 개면** 목록을 보여주고 어느 템플릿을 쓸지 사용자에게 물어요.
+  - **없으면** 절차 4 의 기본 형식으로 가요.
 
 ### 1. 브랜치·변경 상태 확인
 
@@ -102,7 +115,15 @@ git diff --name-only <base>..HEAD
 - 제목이 인자로 없으면, `<base>..HEAD` 커밋 메시지에서 초안을 만들어 제안해요.
 - 개요는 커밋 내역을 바탕으로 **무엇을·왜** 바꿨는지 요약해요.
 
-### 4. 본문 구성 (템플릿 형식 준수)
+### 4. 본문 구성
+
+**절차 0 에서 템플릿을 찾았으면** — 그 파일의 **섹션 헤딩과 체크리스트 항목을 그대로 둔 채** 내용만 채워요.
+
+- 헤딩을 추가·삭제·번역·재배열하지 않아요. 레포의 구조가 정답이에요.
+- HTML 주석(`<!-- ... -->`)은 작성 지침이니 따르되, 최종 본문에서는 지워요.
+- 해당 없는 섹션은 헤딩을 지우지 말고 "해당 없음" 으로 채워요.
+
+**못 찾았으면** — 아래 기본 형식을 써요:
 
 ```markdown
 ## 개요
@@ -129,5 +150,5 @@ gh pr create --draft --base <base> --title "<제목>" --body "<본문>"
 - 항상 `--draft`로 만들어요 (정식 전환은 사용자가 준비되면 `gh pr ready`).
 - stacked PR은 **opt-in**이에요 — 리뷰 단위가 2개 이상으로 나뉠 때만 묻고, 기본은 항상 단일 draft PR이에요.
 - base는 원격 기본 브랜치예요 (감지 실패 시 `main`).
-- 본문은 반드시 `## 개요`·`## 체크리스트` 구조를 유지해요.
+- 본문 구조는 **레포 템플릿이 우선**이에요. 템플릿이 없을 때만 `## 개요`·`## 체크리스트` 기본 형식을 써요.
 - 문서 동기화는 **코드/설정/의존성 변경이 있을 때만** 물어요 (문서·주석만 바뀐 PR은 스킵).
