@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -14,8 +15,6 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-      # selftest 먼저 — 설치 없이 몇 초면 끝나 빠르게 실패한다.
       - run: python3 skills/pipeline/scripts/pipeline.py selftest
-      # 버전 미고정: 사용자가 latest 를 쓰므로 CI 도 latest 로 검증한다.
       - run: npm i -g @anthropic-ai/claude-code
       - run: claude plugin validate .
