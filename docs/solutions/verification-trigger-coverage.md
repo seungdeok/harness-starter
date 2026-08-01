@@ -103,3 +103,31 @@ grep -n -A3 "content.includes" .../oh-my-claudecode/4.15.7/src/hooks/wiki/storag
 [probe-constraints-before-planning.md](probe-constraints-before-planning.md) (외부 도구 제약은
 계획 전에 실측), [spec-baseline-drift.md](spec-baseline-drift.md) (`.gitignore` 는
 `git check-ignore -v` 로 양쪽을 모두 찍는다)
+
+## 같은 실수의 두 번째 사례 — 빈 결과를 "통과"로 읽다 (같은 날, 정리 단계)
+
+머지 후 브랜치를 지워도 되는지 확인하는 스크립트를 이렇게 썼다.
+
+```bash
+files=$(git diff --name-only main...$b)
+d=$(git diff --name-only $b main -- $files)     # ← zsh 에서 무너진다
+[ -z "$d" ] && echo "고유 내용 없음, 삭제 안전"
+```
+
+세 브랜치 모두 "✅ 삭제 안전"이 떴다. **거짓이었다** — 그중 하나에는 아직 push 안 된
+compound 노트가 들어 있었다.
+
+원인은 `wiki_list` 건과 판박이다. **zsh 는 따옴표 없는 파라미터 확장에 단어 분할을 하지 않는다**
+(bash 와 다르다). `$files` 의 여러 줄이 pathspec **하나**로 뭉쳐 아무 파일도 매칭하지 못했고,
+그래서 diff 가 비었다. 빈 결과의 뜻은 "차이가 없다"가 아니라 **"비교가 일어나지 않았다"** 였다.
+
+올바른 확인은 pathspec 없이 상태 코드를 보는 것이다.
+
+```bash
+git diff --name-status "$b" main | awk '$1=="D"{print $2}'   # 브랜치에만 있는 파일
+```
+
+기존 GUARDRAILS 의 zsh 규칙은 **glob nomatch** 한정이라 이 케이스를 덮지 못했다.
+zsh 에서 명령이 조용히 무력화되는 경로가 최소 둘이라는 뜻이다.
+
+→ GUARDRAILS.md 에 승격.
