@@ -1,3 +1,8 @@
 # OMC 기본값은 `wiki/`(무시) 지만, 이 레포는 wiki 를 커밋해요 — 루트 .gitignore 참고.
 # OMC 의 재생성 로직은 'wiki/' 부분 문자열이 있으면 덧붙이지 않으므로 이 줄이 유지돼요.
 !wiki/
+# 자동 생성물은 '사실' 이 아니라 세션 부산물이라 제외해요 (ADR-009 의 docs=규범 / wiki=사실 구분).
+# `!wiki/` 뒤에 와야 해요 — 디렉토리 재포함이 나중에 오면 아래 제외가 무효가 돼요.
+wiki/session-log-*.md
+wiki/log.md
+wiki/environment.md
