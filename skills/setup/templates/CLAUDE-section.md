@@ -79,6 +79,14 @@ Compound Engineering 루프: `brainstorm → plan → work → simplify → revi
 
 배운 게 없으면 "특이사항 없음"이라고만 남기고 넘어간다. 핵심은 **리뷰에서 끝내지 않고, 교훈을 다음 사이클로 되먹이는 것**이다.
 
+## 6. `phases/` 는 커밋하지 않는다
+
+`phases/<slug>/` 아래 파일(`plan.md`, `phase.json`, `stage-*-output.json`)은 **전부 로컬 작업 산출물**이다.
+`plan.md` 도 예외가 아니다 — approve·verify 가 참조하는 기준 문서지만 레포에 남기지 않는다.
+
+`.gitignore` 로 막지 않으므로 `git status` 에 untracked 로 뜬다. 이건 의도된 상태다.
+커밋할 때 `git add .` / `git add -A` 로 쓸어 담지 말고, 변경 파일을 명시해서 스테이징한다.
+
 ---
 
 **These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.

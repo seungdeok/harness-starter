@@ -50,13 +50,15 @@ env 변수)는 그대로 두고 `HARNESS_*` 만 추가/갱신해요. 덮어쓰�
 이미 `HARNESS_*` 값이 있으면 현재 값을 보여주고 갱신 여부를 확인해요.
 (env 는 세션 시작 시 환경변수로 주입되므로, setup 직후 현재 세션에서는 스킬들이 파일을 직접 읽어 fallback 해요.)
 
-`.gitignore` 에 아래 세 줄이 없으면 추가해요 (있는 줄은 건너뜀):
+`.gitignore` 에 아래 두 줄이 없으면 추가해요 (있는 줄은 건너뜀):
 
 ```
-phases/
 .claude/worktrees/
 .claude/settings.local.json
 ```
+
+`phases/` 는 넣지 않아요. phase 산출물은 커밋 대상이 아니지만 무시 규칙도 두지 않고 규범으로 다뤄요
+(CLAUDE.md 참고). 이미 `phases/` 줄이 있는 레포라면 지워도 돼요.
 
 ## 3. scope 별 scaffold
 
