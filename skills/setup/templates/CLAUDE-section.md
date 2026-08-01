@@ -75,7 +75,7 @@ Compound Engineering 루프: `brainstorm → plan → work → simplify → revi
 
 1. **회고**: 이번 실행–검토 과정에서 발생한 실수, 헛디딤, 되풀이하기 싫은 판단 미스, 새로 배운 것을 1~3줄로 정리한다.
 2. **기록**: `/ce-compound`로 `{{DOCS_PATH}}/solutions/<slug>.md`에 해결 노트를 남긴다 — _문제 / 원인 / 해결 / 재발 방지_. 다음 에이전트가 같은 교훈을 처음부터 다시 배우지 않게 한다.
-3. **승격**: 재발 방지 규칙이라면 `{{DOCS_PATH}}/solutions/GUARDRAILS.md`에 한 줄 규칙으로 올린다. 이 파일은 다음 작업의 `plan`/`brainstorm`이 먼저 읽는 grounding이 되어, 같은 실수를 구조적으로 막는다.
+3. **승격**: 재발 방지 규칙이라면 `{{DOCS_PATH}}/solutions/GUARDRAILS.md`에 한 줄 규칙으로 올린다. 이 파일은 다음 작업의 `plan`/`brainstorm`이 먼저 읽는 grounding이 되어, 같은 실수를 구조적으로 막는다. 강제가 꼭 필요한 경우에만 Claude Code hook(settings)으로도 등록해 구조적으로 막는다.
 
 배운 게 없으면 "특이사항 없음"이라고만 남기고 넘어간다. 핵심은 **리뷰에서 끝내지 않고, 교훈을 다음 사이클로 되먹이는 것**이다.
 
