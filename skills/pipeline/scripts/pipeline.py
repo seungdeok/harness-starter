@@ -13,12 +13,14 @@ Usage:
     python3 pipeline.py status [phase]
     python3 pipeline.py advance [phase] [--summary "..."]
     python3 pipeline.py run [phase]      # headless: 남은 stage 자동 실행
+    python3 pipeline.py done <phase>     # worktree 제거 + 브랜치 정리
     python3 pipeline.py selftest
 """
 
 import argparse
 import json
 import re
+import shutil
 import subprocess
 import sys
 from datetime import datetime, timezone, timedelta
@@ -93,8 +95,22 @@ def _branch(slug: str) -> str:
     return slug.upper()
 
 
-def _run_git(*args) -> subprocess.CompletedProcess:
-    return subprocess.run(["git", *args], cwd=str(ROOT), capture_output=True, text=True)
+def _run_git(*args, cwd: Path | None = None) -> subprocess.CompletedProcess:
+    return subprocess.run(["git", *args], cwd=str(cwd or ROOT), capture_output=True, text=True)
+
+
+def _main_root() -> Path:
+    """메인 체크아웃 루트. worktree 안에서도 `.git` 은 메인 쪽을 가리키므로
+    done 은 여기서 git 을 실행해야 자기 worktree 를 제거할 수 있다.
+    git 이 cwd 기준 상대 경로(`../.git`)를 줄 수 있어 resolve() 가 필요하다."""
+    r = subprocess.run(["git", "rev-parse", "--git-common-dir"],
+                       capture_output=True, text=True)
+    return Path(r.stdout.strip()).resolve().parent if r.returncode == 0 else ROOT
+
+
+def _wt_path(root: Path, slug: str) -> Path:
+    """phase 전용 worktree 경로. init 과 done 이 갈라지지 않게 한 군데서만 만든다."""
+    return root / ".claude" / "worktrees" / slug
 
 
 # --- 순수 상태 로직 (git/io 없음 → selftest 대상) --------------------------
@@ -138,6 +154,15 @@ def mark_advance(doc: dict, summary: str | None = None) -> dict:
     if doc["cursor"] >= len(doc["stages"]):
         doc["completed_at"] = _stamp()
     return doc
+
+
+def _blocking(status_lines: list[str]) -> list[str]:
+    """`git status --porcelain` 줄에서 '정리해도 되는 것'이 아닌 경로만 골라낸다.
+    phases/ 는 done 이 지워도 되는 자기 산출물(CLAUDE.md §6), 나머지는 사용자 작업이다.
+    비어 있지 않으면 done 은 아무것도 지우지 않고 멈춘다 — 순서를 뒤집으면
+    remove 실패 시 phase 상태만 날아가고 worktree 는 남는다."""
+    paths = [ln[3:] for ln in status_lines if ln.strip()]
+    return [p for p in paths if not p.startswith("phases/")]
 
 
 # --- 경로/조회 -------------------------------------------------------------
@@ -213,7 +238,9 @@ def cmd_init(name: str, no_review: bool = False, no_worktree: bool = False,
     --no-worktree 면 현재 체크아웃에서 바로 진행한다."""
     slug = _slug(name)
     branch = _branch(slug)
-    wt = None if no_worktree else ROOT / ".claude" / "worktrees" / slug
+    # 기준은 ROOT 가 아니라 메인 체크아웃 — worktree 안에서 init 해도 중첩되지 않고,
+    # done 이 찾는 곳과 항상 같아진다. 메인에서 실행하면 둘은 같은 경로다.
+    wt = None if no_worktree else _wt_path(_main_root(), slug)
     f = _phase_file(slug) if wt is None else wt / "phases" / slug / "phase.json"
     if f.exists():
         sys.exit(f"ERROR: {f} 이미 있음.")
@@ -248,6 +275,39 @@ def cmd_advance(arg, summary):
     doc = mark_advance(_read(f), summary)
     _write(f, doc)
     _show_next(doc)
+
+
+def cmd_done(name: str):
+    """phase 를 끝낸 뒤 worktree 를 제거하고 브랜치를 정리한다.
+    완료된 phase 는 _resolve 가 못 찾으므로(cursor == 총 stage 수) 이름을 반드시 받고,
+    phase.json 은 worktree 안에 있어 메인에서 안 보이므로 slug 만으로 경로를 유도한다."""
+    slug = _slug(name)
+    branch = _branch(slug)
+    main = _main_root()
+    wt = _wt_path(main, slug)
+    removed = False
+    if wt.exists():
+        blocking = _blocking(_run_git("status", "--porcelain", cwd=wt).stdout.splitlines())
+        if blocking:
+            sys.exit("ERROR: 정리 안 된 변경이 있어요 (아무것도 지우지 않았어요):\n  "
+                     + "\n  ".join(blocking))
+        shutil.rmtree(wt / "phases", ignore_errors=True)
+        r = _run_git("worktree", "remove", str(wt), cwd=main)
+        if r.returncode != 0:
+            sys.exit(f"ERROR: worktree 제거 실패: {r.stderr.strip()}")
+        removed = True
+        print(f"  worktree 제거: {wt}")
+    else:
+        print(f"  worktree 없음 (이미 정리됨): {wt}")
+    r = _run_git("branch", "-d", branch, cwd=main)
+    if r.returncode == 0:
+        print(f"  브랜치 {branch} 삭제")
+    else:
+        print(f"  브랜치 {branch} 유지 — {r.stderr.strip()}")
+    print(f"  ✓ '{slug}' 정리 완료.")
+    if removed:
+        # 방금 지운 디렉토리가 셸의 cwd 일 수 있다.
+        print(f"  셸이 지워진 경로에 있으면: cd {main}")
 
 
 def cmd_run(arg):
@@ -343,6 +403,14 @@ def selftest():
         _show_next(fresh)
     assert "일부만 커밋" in buf.getvalue()  # 통째 커밋 대신 범위를 물어본다
     assert _slug("Share Fortune!!") == "share-fortune"
+    # worktree 경로 규칙 — init 과 done 이 갈라지면 done 이 엉뚱한 곳을 지운다.
+    assert _wt_path(Path("/r"), "a-b") == Path("/r/.claude/worktrees/a-b")
+    # 정리 가능 여부 판정: phases/ 만이면 진행, 그 외가 섞이면 그것만 막는다.
+    assert _blocking(["?? phases/", "?? phases/x/plan.md"]) == []
+    assert _blocking([]) == []
+    assert _blocking(["?? phases/x/", " M skills/pipeline/SKILL.md", "?? note.txt"]) == [
+        "skills/pipeline/SKILL.md", "note.txt",
+    ]
     print("selftest OK")
 
 
@@ -357,6 +425,7 @@ def main():
     p = sub.add_parser("status"); p.add_argument("phase", nargs="?")
     p = sub.add_parser("advance"); p.add_argument("phase", nargs="?"); p.add_argument("--summary")
     p = sub.add_parser("run"); p.add_argument("phase", nargs="?")
+    p = sub.add_parser("done"); p.add_argument("phase")
     sub.add_parser("selftest")
     a = ap.parse_args()
 
@@ -368,6 +437,8 @@ def main():
         cmd_advance(a.phase, a.summary)
     elif a.cmd == "run":
         cmd_run(a.phase)
+    elif a.cmd == "done":
+        cmd_done(a.phase)
     elif a.cmd == "selftest":
         selftest()
 
