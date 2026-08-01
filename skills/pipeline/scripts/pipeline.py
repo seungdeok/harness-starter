@@ -13,12 +13,13 @@ Usage:
     python3 pipeline.py status [phase]
     python3 pipeline.py advance [phase] [--summary "..."]
     python3 pipeline.py run [phase]      # headless: 남은 stage 자동 실행
-    python3 pipeline.py done <phase>     # worktree 제거 + 브랜치 정리
+    python3 pipeline.py done <phase>     # worktree 제거 + 브랜치 정리 (compound 미수행이면 거부)
     python3 pipeline.py selftest
 """
 
 import argparse
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -30,10 +31,17 @@ from pathlib import Path
 def _git_root() -> Path:
     """ROOT 는 스크립트 위치가 아니라 cwd 기준 git root. plugin 설치 시 스크립트는
     ~/.claude/plugins/ 캐시에 있으므로, phase 는 '지금 작업 중인 레포'에 속해야 한다.
-    worktree 안에서 실행하면 worktree root 가 잡혀 기존 동작이 유지된다."""
+    worktree 안에서 실행하면 worktree root 가 잡혀 기존 동작이 유지된다.
+
+    git 밖이면 죽는다(fail-closed). cwd 로 폴백하면 에이전트가 다른 디렉토리에 있거나
+    서브에이전트 cwd 가 다를 때 조용히 엉뚱한 곳에 phases/ 를 만든다.
+    모듈 로드 시점에 평가되므로 selftest·--help 도 git repo 안에서만 돈다 — 의도된 비용."""
     r = subprocess.run(["git", "rev-parse", "--show-toplevel"],
                        capture_output=True, text=True)
-    return Path(r.stdout.strip()) if r.returncode == 0 else Path.cwd()
+    if r.returncode != 0:
+        sys.exit("ERROR: git repo 밖에서 실행됐어요 — phase 위치를 결정할 수 없어요.\n"
+                 "  대상 레포 안에서 실행하세요.")
+    return Path(r.stdout.strip())
 
 
 ROOT = _git_root()
@@ -107,6 +115,20 @@ def _main_root() -> Path:
     return Path(r.stdout.strip()).resolve().parent if r.returncode == 0 else ROOT
 
 
+def _base_branch(main: Path) -> str:
+    """PR 의 base. origin/HEAD 가 가리키는 기본 브랜치이고, 없으면 main 으로 본다."""
+    r = _run_git("symbolic-ref", "--short", "refs/remotes/origin/HEAD", cwd=main)
+    return r.stdout.strip().rsplit("/", 1)[-1] if r.returncode == 0 else "main"
+
+
+def _branch_changed_files(main: Path, branch: str) -> list[str] | None:
+    """base 대비 이 브랜치가 바꾼 파일. three-dot 이라 base 가 전진해도 남의 커밋이 안 섞인다
+    (GUARDRAILS). base 를 못 찾으면 None — 판정 불가와 '안 바꿈'을 구별해야 한다."""
+    base = _base_branch(main)
+    r = _run_git("diff", "--name-only", f"origin/{base}...{branch}", cwd=main)
+    return r.stdout.splitlines() if r.returncode == 0 else None
+
+
 def _wt_path(root: Path, slug: str) -> Path:
     """phase 전용 worktree 경로. init 과 done 이 갈라지지 않게 한 군데서만 만든다."""
     return root / ".claude" / "worktrees" / slug
@@ -162,6 +184,14 @@ def _blocking(status_lines: list[str]) -> list[str]:
     remove 실패 시 phase 상태만 날아가고 worktree 는 남는다."""
     paths = [ln[3:] for ln in status_lines if ln.strip()]
     return [p for p in paths if not p.startswith("phases/")]
+
+
+def _compounded(changed: list[str], docs_path: str) -> bool:
+    """이 브랜치가 <docs>/solutions/ 를 건드렸는가 = compound 를 돌렸는가.
+    파이프라인에 compound stage 가 없으므로(ADR-001) done 이 유일한 확인 지점이다.
+    증류 전에 worktree 가 사라지면 그 작업은 아무것도 남기지 못한다."""
+    prefix = f"{docs_path.strip('/')}/solutions/"
+    return any(p.startswith(prefix) for p in changed)
 
 
 # --- 경로/조회 -------------------------------------------------------------
@@ -276,7 +306,7 @@ def cmd_advance(arg, summary):
     _show_next(doc)
 
 
-def cmd_done(name: str):
+def cmd_done(name: str, force: bool = False):
     """phase 를 끝낸 뒤 worktree 를 제거하고 브랜치를 정리한다.
     완료된 phase 는 _resolve 가 못 찾으므로(cursor == 총 stage 수) 이름을 반드시 받고,
     phase.json 은 worktree 안에 있어 메인에서 안 보이므로 slug 만으로 경로를 유도한다."""
@@ -284,6 +314,18 @@ def cmd_done(name: str):
     branch = _branch(slug)
     main = _main_root()
     wt = _wt_path(main, slug)
+
+    # compound 게이트 — 지우기 전에, 아무것도 지우기 전에 확인한다.
+    if not force:
+        changed = _branch_changed_files(main, branch)
+        if changed is None:
+            print(f"  경고: base 를 못 찾아 compound 여부를 확인하지 못했어요 ({branch}).")
+        elif not _compounded(changed, os.environ.get("HARNESS_DOCS_PATH", "docs")):
+            sys.exit(f"ERROR: compound 미수행 — '{slug}' 는 아무것도 남기지 못해요.\n"
+                     "  이 브랜치가 <docs>/solutions/ 를 하나도 건드리지 않았어요.\n"
+                     "  /ce-compound 로 교훈을 남긴 뒤 다시 실행하거나,\n"
+                     "  남길 게 정말 없으면 --force 로 건너뛰세요.")
+
     removed = False
     if wt.exists():
         blocking = _blocking(_run_git("status", "--porcelain", cwd=wt).stdout.splitlines())
@@ -410,6 +452,18 @@ def selftest():
     assert _blocking(["?? phases/x/", " M skills/pipeline/SKILL.md", "?? note.txt"]) == [
         "skills/pipeline/SKILL.md", "note.txt",
     ]
+    # compound 게이트: <docs>/solutions/ 를 건드렸는가.
+    assert _compounded(["docs/solutions/foo.md"], "docs")
+    assert _compounded(["src/a.py", "docs/solutions/GUARDRAILS.md"], "docs")
+    assert not _compounded(["src/a.py", "docs/ADR.md"], "docs")
+    assert not _compounded([], "docs")
+    # docs 경로가 다른 레포도 판정된다 (HARNESS_DOCS_PATH).
+    assert _compounded(["documentation/solutions/x.md"], "documentation")
+    assert not _compounded(["docs/solutions/x.md"], "documentation")
+    # 앞뒤 슬래시가 붙어 와도 같은 결과 — env 값을 그대로 받기 때문.
+    assert _compounded(["docs/solutions/x.md"], "/docs/")
+    # solutions 로 시작만 하는 남의 경로를 compound 로 오인하지 않는다.
+    assert not _compounded(["docs/solutions-old/x.md"], "docs")
     print("selftest OK")
 
 
@@ -425,6 +479,7 @@ def main():
     p = sub.add_parser("advance"); p.add_argument("phase", nargs="?"); p.add_argument("--summary")
     p = sub.add_parser("run"); p.add_argument("phase", nargs="?")
     p = sub.add_parser("done"); p.add_argument("phase")
+    p.add_argument("--force", action="store_true", help="compound 미수행이어도 정리 강행")
     sub.add_parser("selftest")
     a = ap.parse_args()
 
@@ -437,7 +492,7 @@ def main():
     elif a.cmd == "run":
         cmd_run(a.phase)
     elif a.cmd == "done":
-        cmd_done(a.phase)
+        cmd_done(a.phase, a.force)
     elif a.cmd == "selftest":
         selftest()
 

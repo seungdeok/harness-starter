@@ -22,3 +22,7 @@ compound 단계에서 새 규칙이 생기면 여기에 추가하고, 다음 작
 - [2026-08-01] probe·임시 산출물을 지울 때는 만든 것만 지운다 — 부모 디렉토리 `rmtree`/`rm -rf` 는 그 안의 추적 파일까지 가져간다. 지운 뒤 `git status` 로 예상 밖 삭제를 확인한다. (근거: probe-constraints-before-planning.md)
 - [2026-08-01] PR 범위는 `git diff origin/<base>...HEAD` (세 점, fetch 후)로 본다 — `git diff A..B` 는 두 tip 비교라 그 사이 전진한 남의 커밋이 내 diff 로 섞여 보이고, 로컬 `main` 은 worktree 작업 중 며칠씩 안 움직인다. (근거: pr-scope-two-dot-diff.md)
 - [2026-08-01] 커밋 전에 `git merge-tree --write-tree origin/<base> HEAD` 로 충돌을 미리 본다 — 작업트리를 안 건드리고 exit code 만 준다. 머지 불가 브랜치를 push 한 뒤 PR 단계에서 아는 건 늦다. (근거: pr-scope-two-dot-diff.md)
+- [2026-08-01] 설계 문서를 실행 단위로 삼기 전에 "현재 상태" 절을 레포로 대조한다 — 문서는 시점이 고정되고 코드는 안 그렇다. 이번엔 작업 9개 중 7개가 이미 끝났거나 이미 거부된 안이었다. (근거: spec-baseline-drift.md)
+- [2026-08-01] 문서가 "이미 강제된다/완화됨"이라고 적은 칸을 "미검증" 칸보다 먼저 검증한다 — 미검증은 이미 의심받고 있어서 안전하고, 아무도 다시 안 보는 확인됨 칸이 구멍을 가린다. (근거: spec-baseline-drift.md)
+- [2026-08-01] 남의 도구 상태 디렉토리(`.omc/` 등)에 산출물을 두기 전에 그 도구가 그 경로를 쓰는지 소스로 확인한다 — 이름이 비어 보이는 것과 비어 있는 것은 다르다. (근거: spec-baseline-drift.md)
+- [2026-08-01] `.gitignore` 를 고치면 `git check-ignore -v` 로 무시될 것과 추적될 것을 모두 찍는다 — 패턴에 슬래시가 없으면 모든 깊이를 매칭하고, 중첩 `.gitignore` 가 루트를 이기며, 도구가 자기 규칙을 매 실행 되돌릴 수 있다. 셋 다 조용히 실패한다. (근거: spec-baseline-drift.md)
