@@ -7,6 +7,7 @@
 ## 2026-08-02
 
 - `pipeline.py done` 이 브랜치를 못 지웠을 때 더 이상 `✓ 정리 완료` 로 덮지 않아요. `git branch -d` 는 squash 머지를 미머지로 보기 때문에 브랜치가 남는 건 흔한 정상 상황인데, `✓` 를 보고 `-D` 를 눌러 작업을 잃는 경로가 있었어요. 이제 남았다고 말하고 확인 명령을 알려줘요. ([#32](https://github.com/seungdeok/harness-starter/issues/32))
+- `pipeline.py done` 이 `gh` 로 PR 상태를 봐서 머지 여부를 판정해요. PR 이 안 머지됐거나 **머지된 뒤에 붙은 커밋**이 있으면 거부해요 — squash 머지라 로컬 git 으로는 알 수 없던 것이고, `docs/solutions/` 밖 작업도 함께 지켜져요. `gh` 가 없거나 GitHub 레포가 아니면 기존 내용 비교로 자동 폴백해요. ([#32](https://github.com/seungdeok/harness-starter/issues/32))
 - `pipeline.py done` 의 compound 게이트가 이제 교훈이 `origin/<base>` 에 **도착했는지**까지 확인해요. 전에는 로컬 커밋만 있어도 통과해서 `✓ 정리 완료` 가 거짓 안심을 줬어요 — push·머지가 안 됐으면 거부하고, 메시지로 무엇을 해야 하는지 알려줘요. `--force` 우회는 그대로예요. ([#32](https://github.com/seungdeok/harness-starter/issues/32))
 
 ## 2026-08-01

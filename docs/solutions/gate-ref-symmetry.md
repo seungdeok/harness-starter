@@ -84,9 +84,10 @@ if not any(_arrived(main, base, branch, p) for p in notes):
 판별한다는 증거다. 새 버전만 돌려 "차단됐다"를 보는 것으로는 그걸 알 수 없다
 ([verification-trigger-coverage.md](verification-trigger-coverage.md) 의 역방향 확인).
 
-### 기각한 안 — "병합됐는지 보고, 안 됐을 때만 로컬 커밋을 본다"
+### 같은 제안의 두 버전 — 로컬 git 은 기각, GitHub API 는 채택
 
 리뷰 중에 더 실용적인 안이 나왔다. solutions 경로만 보지 말고 **모든 작업**을 지키자는 것이다.
+같은 아이디어인데 **누구에게 묻느냐**에 따라 하나는 무너지고 하나는 정확했다.
 
 ```
 1) 병합됐나?      git diff --quiet origin/<base> <branch>   → exit 0 이면 통과
@@ -110,12 +111,41 @@ if not any(_arrived(main, base, branch, p) for p in notes):
 `git cherry` 도 안 된다: patch-id 비교라 rebase·cherry-pick 은 잡아내지만, 커밋 여러 개를 하나로
 합치는 squash 는 patch-id 가 달라져 전부 `+` 로 나온다.
 
-**squash 머지 레포에서 commit-level "머지됐나"는 신뢰할 수 있는 방법이 없다.** 내용 비교만 남고,
-내용 비교는 base 전진에 오염되므로 **그 phase 만 만드는 파일**로 좁혀야 한다. `docs/solutions/<slug>.md`
-가 그 조건을 만족하고 `GUARDRAILS.md` 같은 공유 파일은 만족하지 않는다 — 게이트 범위가 좁은 건
-설계 취향이 아니라 이 제약의 결과다.
+**로컬 git 만으로는 squash 머지 레포에서 "머지됐나"에 답할 수 없다.**
 
-대신 그 축(solutions 밖 작업 보호)은 **게이트가 아니라 출력**으로 받았다. 아래 부수 교훈 3.
+#### 채택 — 같은 질문을 GitHub 에 묻는다
+
+로컬 git 이 못 하는 이유는 정보가 없어서다. squash 는 원본 커밋과의 연결을 **끊어 버리고**, 그
+연결을 아는 건 머지를 수행한 쪽, 즉 GitHub 이다. 그래서 물을 상대를 바꿨다.
+
+```python
+gh pr list --head <branch> --state all --limit 1 --json state,commits
+```
+
+```
+PR 없음 / gh 없음 / 비-GitHub / 오프라인 → None → 내용 비교로 폴백
+state != MERGED                        → 차단 "PR 이 아직 머지 안 됐어요"
+로컬 tip ∉ PR 커밋 SHA 목록              → 차단 "머지 뒤에 붙은 커밋이 있어요"
+그 외                                   → 통과
+```
+
+실제 사고 데이터로 검증했다 (`gh` 2.7.0).
+
+| 입력 | 결과 |
+| --- | --- |
+| PR #33 (진행 중) | 차단: PR 미머지 (state=OPEN) |
+| **PR #30 (MERGED) + 머지 뒤 붙은 `d5268b5`** | **차단: tip `d5268b5` ∉ PR `['53c68df']`** ← 사고 재현 |
+| PR #30, tip 이 PR 커밋과 동일 | 통과 |
+| PR 없는 브랜치 | None → 폴백 |
+
+두 번째 줄이 핵심이다. **squash·rebase·base 전진 전부 무관하고, `docs/solutions/` 밖 작업도
+똑같이 지킨다** — 내용 비교로는 `GUARDRAILS.md` 같은 공유 파일 때문에 못 하던 것이다.
+`git branch -d` 가 도달 가능성으로 답을 못 낸 바로 그 질문에 SHA 하나 비교로 답한다.
+
+내용 비교(`_arrived`)는 폴백으로 남긴다. `gh` 미설치·미인증, 비-GitHub 레포, 오프라인,
+PR 없는 브랜치에서 여전히 돌아야 하기 때문이다 — harness 는 남의 레포에 설치되는 plugin 이고,
+`gh` 를 하드 의존으로 만들면 GUARDRAILS 의 *"대상 레포에 런타임 의존을 만들지 않는다"* 를 깬다.
+경로가 둘이라 코드가 줄지 않는 건 인정된 비용이다.
 
 ## 재발 방지
 
@@ -126,7 +156,10 @@ if not any(_arrived(main, base, branch, p) for p in notes):
 - 게이트를 읽을 때 **"이 명령이 무엇을 봤는가"가 아니라 "이 통과가 무엇을 보증하는가"** 로 옮겨 적어 본다.
   두 문장이 다르면 그 차이가 곧 구멍이다.
 - **squash 머지를 쓰는 레포에서는 도달 가능성(`branch -d`·`log A..B`·`cherry`)으로 "머지됐나"를 판정하지 않는다.**
-  전부 "미머지"라고 답한다. 내용 비교로 가되, base 전진에 오염되지 않도록 그 브랜치만 만드는 파일로 좁힌다.
+  전부 "미머지"라고 답한다.
+- **로컬 도구가 답 못 하는 질문은, 그 정보를 실제로 가진 상위 시스템(PR·CI·레지스트리)에 물을 수 있는지 먼저 본다.**
+  squash 는 커밋 연결을 끊지만 그 연결을 아는 쪽은 머지를 수행한 GitHub 이다. 로컬 휴리스틱을 정교하게
+  깎는 것보다 물을 상대를 바꾸는 게 정확하다 — 대신 그 시스템에 못 닿을 때의 폴백은 설계에 포함한다.
 
 → GUARDRAILS.md 에 승격.
 
@@ -180,7 +213,8 @@ git commit -qam feat                                          # -a 는 untracked
 
 ## 부수 교훈 3 — 못 막는 것은 게이트를 넓히지 말고 거짓말을 멈춘다
 
-"solutions 밖 작업도 지켜야 한다"는 요구는 게이트로 받을 수 없었다(위 기각안). 대신 **출력**을 고쳤다.
+gh 로 판정할 수 **없는** 레포(비-GitHub·오프라인·PR 없음)에서는 여전히 solutions 밖 작업을 게이트로
+지킬 수 없다. 그 경로는 **출력**으로 받았다.
 
 ```python
 # before — -d 가 실패해도 무조건

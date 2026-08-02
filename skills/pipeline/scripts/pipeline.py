@@ -128,6 +128,33 @@ def _branch_changed_files(main: Path, base: str, branch: str) -> list[str] | Non
     return r.stdout.splitlines() if r.returncode == 0 else None
 
 
+def _pr_status(main: Path, branch: str) -> tuple[str, list[str]] | None:
+    """이 브랜치 PR 의 (state, PR 에 포함된 커밋 SHA 목록). 판정 불가면 None.
+
+    로컬 git 은 squash 머지를 판정하지 못한다 — `branch -d`·`log A..B`·`cherry` 는 전부
+    "미머지"라고 답한다. GitHub 은 확정적으로 알고, 머지 뒤에 붙은 커밋도 PR 목록에 없어서
+    드러난다(issue #32 의 사고가 정확히 그 모양이었다).
+
+    None 을 주는 경우가 여럿이라 호출부는 내용 비교로 폴백한다: gh 미설치·미인증,
+    비-GitHub 레포, 오프라인, 그 브랜치의 PR 없음."""
+    try:
+        r = subprocess.run(
+            ["gh", "pr", "list", "--head", branch, "--state", "all", "--limit", "1",
+             "--json", "state,commits"],
+            cwd=str(main), capture_output=True, text=True)
+    except OSError:
+        return None  # gh 미설치
+    if r.returncode != 0:
+        return None  # 미인증·비-GitHub·네트워크
+    try:
+        prs = json.loads(r.stdout)
+    except json.JSONDecodeError:
+        return None
+    if not prs:
+        return None  # PR 없음
+    return prs[0].get("state", ""), [c["oid"] for c in prs[0].get("commits", [])]
+
+
 def _arrived(main: Path, base: str, branch: str, path: str) -> bool:
     """이 파일의 내용이 origin/<base> 에 도착했는가. two-dot 이라 내용 비교이고,
     squash/rebase/cherry-pick/별도 PR 어느 방식으로 머지돼도 같은 답이 나온다.
@@ -341,7 +368,21 @@ def cmd_done(name: str, force: bool = False):
                          "  이 브랜치가 <docs>/solutions/ 를 하나도 건드리지 않았어요.\n"
                          "  /ce-compound 로 교훈을 남긴 뒤 다시 실행하거나,\n"
                          "  남길 게 정말 없으면 --force 로 건너뛰세요.")
-            if not any(_arrived(main, base, branch, p) for p in notes):
+            # 도착 판정 — PR 을 볼 수 있으면 그게 정확하다. 못 보면 내용 비교로 폴백한다.
+            pr = _pr_status(main, branch)
+            if pr is not None:
+                state, oids = pr
+                tip = _run_git("rev-parse", branch, cwd=main).stdout.strip()
+                if state != "MERGED":
+                    sys.exit(f"ERROR: PR 이 아직 머지되지 않았어요 (state={state}) — "
+                             f"'{slug}' 를 지우면 작업이 사라져요.\n"
+                             "  PR 을 머지한 뒤 다시 실행하거나, 정말 버려도 되면 --force 로 건너뛰세요.")
+                if tip and tip not in oids:
+                    sys.exit(f"ERROR: PR 머지 뒤에 붙은 커밋이 있어요 — '{slug}' 를 지우면 사라져요.\n"
+                             f"  로컬 tip {tip[:7]} 이 PR 커밋 목록에 없어요:\n"
+                             f"    git log --oneline {oids[-1][:7] if oids else base}..{branch}\n"
+                             "  새 PR 로 올려 머지한 뒤 다시 실행하거나, 정말 버려도 되면 --force 로 건너뛰세요.")
+            elif not any(_arrived(main, base, branch, p) for p in notes):
                 sys.exit(f"ERROR: 교훈이 origin/{base} 에 없어요 — '{slug}' 를 지우면 사라져요.\n"
                          "  남긴 노트: " + ", ".join(notes) + "\n"
                          "  커밋만 하고 push·머지가 안 됐어요. push 한 뒤 PR 을 머지하고 다시 실행하거나,\n"
