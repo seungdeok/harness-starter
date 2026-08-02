@@ -322,11 +322,11 @@ def cmd_done(name: str, force: bool = False):
     branch = _branch(slug)
     main = _main_root()
     wt = _wt_path(main, slug)
+    base = _base_branch(main)  # 게이트와 마지막 안내가 모두 쓴다 (--force 여도 필요)
 
     # compound 게이트 — 지우기 전에, 아무것도 지우기 전에 확인한다.
     # 묻는 것은 "건드렸는가"가 아니라 "교훈이 origin/<base> 에 도착했는가"다 (issue #32).
     if not force:
-        base = _base_branch(main)
         # 로컬 origin/<base> 가 낡으면 도착한 노트를 미도착으로 오판한다. 실패는 무시 —
         # 오프라인이면 있는 ref 로 판정하고, 막는 쪽으로 틀리므로 안전하다.
         # 타임아웃은 걸지 않는다: macOS 기본에 timeout(1) 이 없어 portable 하지 않다.
@@ -361,12 +361,18 @@ def cmd_done(name: str, force: bool = False):
         print(f"  worktree 제거: {wt}")
     else:
         print(f"  worktree 없음 (이미 정리됨): {wt}")
+    # `-d` 는 도달 가능성으로 판정하므로 squash 머지면 다 머지됐어도 거부한다.
+    # 그래서 실패를 게이트로 쓸 순 없지만, ✓ 로 덮어 버리면 사람이 다음 수순으로 -D 를 밟는다
+    # (issue #32 의 실제 피해 경로). 남은 브랜치는 남았다고 말하고 확인 방법을 준다.
     r = _run_git("branch", "-d", branch, cwd=main)
     if r.returncode == 0:
         print(f"  브랜치 {branch} 삭제")
+        print(f"  ✓ '{slug}' 정리 완료.")
     else:
-        print(f"  브랜치 {branch} 유지 — {r.stderr.strip()}")
-    print(f"  ✓ '{slug}' 정리 완료.")
+        print(f"  ⚠ 브랜치 {branch} 를 남겨뒀어요 — git 이 미머지로 봐요.")
+        print("    squash 머지면 정상이지만, 내용을 확인하기 전엔 -D 로 지우지 마세요:")
+        print(f"      git diff origin/{base} {branch}")
+        print(f"  worktree 만 정리했어요 ('{slug}').")
     if removed:
         # 방금 지운 디렉토리가 셸의 cwd 일 수 있다.
         print(f"  셸이 지워진 경로에 있으면: cd {main}")

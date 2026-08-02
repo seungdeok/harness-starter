@@ -125,7 +125,9 @@ make-pr stage 를 `advance` 하면 파이프라인은 여기서 끝이에요. **
 cd <메인 레포 루트> && python3 <pipeline.py 경로> done <slug>
 ```
 
-`done` 은 worktree 를 지우고 `git branch -d` 로 브랜치를 정리해요 — 머지 안 된 브랜치는 삭제하지 않고 경고만 해요.
+`done` 은 worktree 를 지우고 `git branch -d` 로 브랜치를 정리해요. `-d` 는 도달 가능성으로 판정해서
+**squash 머지면 다 머지됐어도 거부**해요 — 그래서 브랜치가 남는 건 흔한 정상 상황이고, 그럴 땐
+`✓ 정리 완료` 대신 확인 명령(`git diff origin/<base> <branch>`)을 안내해요. 확인 전에 `-D` 로 지우지 마세요.
 `phases/<slug>/` 외에 커밋 안 된 변경이 남아 있으면 아무것도 지우지 않고 멈춰요.
 
 **`done` 은 교훈이 `origin/<base>` 에 **도착**했는지 먼저 확인해요.** 두 단계로 봐요:
