@@ -4,6 +4,18 @@ Compound Engineering **phase pipeline 하네스**. Claude Code **plugin(`harness
 어느 레포에서든 `discuss → plan → plan-review → approve → implement(TDD) → verify → commit → make-pr`
 루프를 돌릴 수 있어요.
 
+## 무엇을 위한 것인가
+
+**에이전트 한 명이 작업 하나(phase)를** 요구사항 정리부터 draft PR 까지 끝내게 하는 하네스예요.
+여러 에이전트를 동시에 지휘하는 오케스트레이션 도구가 아니라, phase 하나 = 브랜치/worktree 하나 =
+세션 하나가 기본 단위예요.
+
+- 진행 상태는 `phases/<slug>/phase.json` 이 기억해요 → 세션이 끊겨도 `status` 로 이어서 진행.
+- 사람이 반드시 개입하는 지점(`discuss`·`approve`·커밋 범위 확인)은 생략할 수 없어요 — 승인 게이트가 이 파이프라인의 목적이에요.
+- phase 를 여러 개 병행하고 싶으면 각각 **전용 worktree** 로 따로 시작해요(기본값).
+- `phases/` 아래 산출물은 **커밋하지 않아요**. `git status` 에 untracked 로 계속 뜨는 게 정상이고,
+  그래서 커밋할 때 `git add .` / `-A` 대신 파일을 명시해요 (ADR-005).
+
 ## 설치 (Claude Code plugin)
 
 ```
@@ -93,22 +105,43 @@ Claude에게 시키면 돼요:
 
 자세한 내용은 `docs/solutions/pipeline.md`.
 
-## 필요한 스킬
+## 사전조건 (필요한 스킬)
 
 각 stage는 스킬을 실행해요. plugin 에 없는 스킬은 외부에서 켜야 해요.
+파이프라인은 **init(worktree·브랜치 생성) 전에** 이 목록을 점검하고, 없는 게 있으면 먼저 알려줘요 (ADR-007).
 
-**required** — plan·implement(-red/green)·verify stage 가 하드 의존해요 (ADR-004):
+**필수 (required)** — plan·implement(-red/green)·verify stage 가 하드 의존해요. 대안이 없어요 (ADR-004):
 
 | stage | 스킬 | 출처 |
 | --- | --- | --- |
 | plan·implement(-red/green)·verify | `/plan`·`/ultrawork`·`/verify` | **oh-my-claudecode (OMC)** |
 
-**optional** — 없으면 그 stage만 건너뛰면 돼요:
+**선택 (optional)** — 없어도 파이프라인은 돌아가요:
 
-| stage | 스킬 | 출처 |
-| --- | --- | --- |
-| plan-review-ceo/eng | `/plan-ceo-review`·`/plan-eng-review` | **gstack** |
-| compound | `/ce-compound` (+ `/ce-code-review`) | **compound-engineering@compound-engineering-plugin** |
+| stage | 스킬 | 출처 | 없으면 |
+| --- | --- | --- | --- |
+| plan-review-ceo/eng | `/plan-ceo-review`·`/plan-eng-review` | **gstack** | `--no-review` 로 고정 (묻지 않아요) |
+| compound (파이프라인 밖) | `/ce-compound`·`/ce-code-review` | **compound-engineering@compound-engineering-plugin** | 교훈 기록을 손으로 `docs/solutions/` 에 씀 |
+| `done` 의 머지 판정 | `gh` CLI | GitHub CLI | 노트 내용 비교로 자동 폴백 |
+
+## 파이프라인 이후 — compound 와 정리
+
+make-pr 로 파이프라인은 끝나지만 작업은 안 끝나요. **리뷰까지 마쳤으면** 이번에 배운 걸 남겨요
+(CLAUDE.md §5): `/ce-compound` → `docs/solutions/<slug>.md`, 일반화되는 규칙이면 `GUARDRAILS.md` 한 줄.
+
+전용 worktree 는 **PR 이 머지된 뒤** 정리해요:
+
+```bash
+cd <메인 레포 루트> && python3 <pipeline.py> done <slug>
+```
+
+`done` 은 지우기 전에 교훈이 `origin/<base>` 에 **도착**했는지 봐요 — 브랜치가 `docs/solutions/` 를
+건드렸는지(귀속), 그리고 `gh` 로 PR 이 실제 머지됐고 그 뒤에 붙은 커밋이 없는지(도착). 하나라도
+어긋나면 **아무것도 지우지 않고 거부**해요 (`--force` 로 우회). 교훈을 push·머지하지 않은 채
+worktree 를 날리면 그 작업이 아무것도 남기지 못하니까요 (ADR-012).
+
+`git branch -d` 는 squash 머지를 미머지로 보기 때문에 브랜치가 남는 건 흔한 정상 상황이에요.
+그때는 `✓ 정리 완료` 대신 확인 명령을 안내하니, 확인 전에 `-D` 로 지우지 마세요.
 
 ## 이 레포에서 개발 (dogfooding)
 
