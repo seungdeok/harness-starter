@@ -121,12 +121,46 @@ def _base_branch(main: Path) -> str:
     return r.stdout.strip().rsplit("/", 1)[-1] if r.returncode == 0 else "main"
 
 
-def _branch_changed_files(main: Path, branch: str) -> list[str] | None:
+def _branch_changed_files(main: Path, base: str, branch: str) -> list[str] | None:
     """base 대비 이 브랜치가 바꾼 파일. three-dot 이라 base 가 전진해도 남의 커밋이 안 섞인다
     (GUARDRAILS). base 를 못 찾으면 None — 판정 불가와 '안 바꿈'을 구별해야 한다."""
-    base = _base_branch(main)
     r = _run_git("diff", "--name-only", f"origin/{base}...{branch}", cwd=main)
     return r.stdout.splitlines() if r.returncode == 0 else None
+
+
+def _pr_status(main: Path, branch: str) -> tuple[str, list[str]] | None:
+    """이 브랜치 PR 의 (state, PR 에 포함된 커밋 SHA 목록). 판정 불가면 None.
+
+    로컬 git 은 squash 머지를 판정하지 못한다 — `branch -d`·`log A..B`·`cherry` 는 전부
+    "미머지"라고 답한다. GitHub 은 확정적으로 알고, 머지 뒤에 붙은 커밋도 PR 목록에 없어서
+    드러난다(issue #32 의 사고가 정확히 그 모양이었다).
+
+    None 을 주는 경우가 여럿이라 호출부는 내용 비교로 폴백한다: gh 미설치·미인증,
+    비-GitHub 레포, 오프라인, 그 브랜치의 PR 없음."""
+    try:
+        r = subprocess.run(
+            ["gh", "pr", "list", "--head", branch, "--state", "all", "--limit", "1",
+             "--json", "state,commits"],
+            cwd=str(main), capture_output=True, text=True)
+    except OSError:
+        return None  # gh 미설치
+    if r.returncode != 0:
+        return None  # 미인증·비-GitHub·네트워크
+    try:
+        prs = json.loads(r.stdout)
+    except json.JSONDecodeError:
+        return None
+    if not prs:
+        return None  # PR 없음
+    return prs[0].get("state", ""), [c["oid"] for c in prs[0].get("commits", [])]
+
+
+def _arrived(main: Path, base: str, branch: str, path: str) -> bool:
+    """이 파일의 내용이 origin/<base> 에 도착했는가. two-dot 이라 내용 비교이고,
+    squash/rebase/cherry-pick/별도 PR 어느 방식으로 머지돼도 같은 답이 나온다.
+    exit 128(잘못된 ref) 도 미도착으로 묶인다 — 판정 불가일 때는 막는 쪽이 안전하다."""
+    return _run_git("diff", "--quiet", f"origin/{base}", branch, "--", path,
+                    cwd=main).returncode == 0
 
 
 def _wt_path(root: Path, slug: str) -> Path:
@@ -186,12 +220,13 @@ def _blocking(status_lines: list[str]) -> list[str]:
     return [p for p in paths if not p.startswith("phases/")]
 
 
-def _compounded(changed: list[str], docs_path: str) -> bool:
-    """이 브랜치가 <docs>/solutions/ 를 건드렸는가 = compound 를 돌렸는가.
+def _solution_notes(changed: list[str], docs_path: str) -> list[str]:
+    """이 브랜치가 건드린 <docs>/solutions/ 파일 = compound 로 남긴 것들.
     파이프라인에 compound stage 가 없으므로(ADR-001) done 이 유일한 확인 지점이다.
-    증류 전에 worktree 가 사라지면 그 작업은 아무것도 남기지 못한다."""
+    bool 이 아니라 목록인 것은 도착 확인(cmd_done)이 이 목록 위에서 돌기 때문 —
+    경로 필터를 여기 한 곳에만 두려고 git 쪽엔 pathspec 을 주지 않는다."""
     prefix = f"{docs_path.strip('/')}/solutions/"
-    return any(p.startswith(prefix) for p in changed)
+    return [p for p in changed if p.startswith(prefix)]
 
 
 # --- 경로/조회 -------------------------------------------------------------
@@ -314,17 +349,44 @@ def cmd_done(name: str, force: bool = False):
     branch = _branch(slug)
     main = _main_root()
     wt = _wt_path(main, slug)
+    base = _base_branch(main)  # 게이트와 마지막 안내가 모두 쓴다 (--force 여도 필요)
 
     # compound 게이트 — 지우기 전에, 아무것도 지우기 전에 확인한다.
+    # 묻는 것은 "건드렸는가"가 아니라 "교훈이 origin/<base> 에 도착했는가"다 (issue #32).
     if not force:
-        changed = _branch_changed_files(main, branch)
+        # 로컬 origin/<base> 가 낡으면 도착한 노트를 미도착으로 오판한다. 실패는 무시 —
+        # 오프라인이면 있는 ref 로 판정하고, 막는 쪽으로 틀리므로 안전하다.
+        # 타임아웃은 걸지 않는다: macOS 기본에 timeout(1) 이 없어 portable 하지 않다.
+        _run_git("fetch", "--quiet", "origin", base, cwd=main)
+        changed = _branch_changed_files(main, base, branch)
         if changed is None:
             print(f"  경고: base 를 못 찾아 compound 여부를 확인하지 못했어요 ({branch}).")
-        elif not _compounded(changed, os.environ.get("HARNESS_DOCS_PATH", "docs")):
-            sys.exit(f"ERROR: compound 미수행 — '{slug}' 는 아무것도 남기지 못해요.\n"
-                     "  이 브랜치가 <docs>/solutions/ 를 하나도 건드리지 않았어요.\n"
-                     "  /ce-compound 로 교훈을 남긴 뒤 다시 실행하거나,\n"
-                     "  남길 게 정말 없으면 --force 로 건너뛰세요.")
+        else:
+            notes = _solution_notes(changed, os.environ.get("HARNESS_DOCS_PATH", "docs"))
+            if not notes:
+                sys.exit(f"ERROR: compound 미수행 — '{slug}' 는 아무것도 남기지 못해요.\n"
+                         "  이 브랜치가 <docs>/solutions/ 를 하나도 건드리지 않았어요.\n"
+                         "  /ce-compound 로 교훈을 남긴 뒤 다시 실행하거나,\n"
+                         "  남길 게 정말 없으면 --force 로 건너뛰세요.")
+            # 도착 판정 — PR 을 볼 수 있으면 그게 정확하다. 못 보면 내용 비교로 폴백한다.
+            pr = _pr_status(main, branch)
+            if pr is not None:
+                state, oids = pr
+                tip = _run_git("rev-parse", branch, cwd=main).stdout.strip()
+                if state != "MERGED":
+                    sys.exit(f"ERROR: PR 이 아직 머지되지 않았어요 (state={state}) — "
+                             f"'{slug}' 를 지우면 작업이 사라져요.\n"
+                             "  PR 을 머지한 뒤 다시 실행하거나, 정말 버려도 되면 --force 로 건너뛰세요.")
+                if tip and tip not in oids:
+                    sys.exit(f"ERROR: PR 머지 뒤에 붙은 커밋이 있어요 — '{slug}' 를 지우면 사라져요.\n"
+                             f"  로컬 tip {tip[:7]} 이 PR 커밋 목록에 없어요:\n"
+                             f"    git log --oneline {oids[-1][:7] if oids else base}..{branch}\n"
+                             "  새 PR 로 올려 머지한 뒤 다시 실행하거나, 정말 버려도 되면 --force 로 건너뛰세요.")
+            elif not any(_arrived(main, base, branch, p) for p in notes):
+                sys.exit(f"ERROR: 교훈이 origin/{base} 에 없어요 — '{slug}' 를 지우면 사라져요.\n"
+                         "  남긴 노트: " + ", ".join(notes) + "\n"
+                         "  커밋만 하고 push·머지가 안 됐어요. push 한 뒤 PR 을 머지하고 다시 실행하거나,\n"
+                         "  정말 버려도 되면 --force 로 건너뛰세요.")
 
     removed = False
     if wt.exists():
@@ -340,12 +402,18 @@ def cmd_done(name: str, force: bool = False):
         print(f"  worktree 제거: {wt}")
     else:
         print(f"  worktree 없음 (이미 정리됨): {wt}")
+    # `-d` 는 도달 가능성으로 판정하므로 squash 머지면 다 머지됐어도 거부한다.
+    # 그래서 실패를 게이트로 쓸 순 없지만, ✓ 로 덮어 버리면 사람이 다음 수순으로 -D 를 밟는다
+    # (issue #32 의 실제 피해 경로). 남은 브랜치는 남았다고 말하고 확인 방법을 준다.
     r = _run_git("branch", "-d", branch, cwd=main)
     if r.returncode == 0:
         print(f"  브랜치 {branch} 삭제")
+        print(f"  ✓ '{slug}' 정리 완료.")
     else:
-        print(f"  브랜치 {branch} 유지 — {r.stderr.strip()}")
-    print(f"  ✓ '{slug}' 정리 완료.")
+        print(f"  ⚠ 브랜치 {branch} 를 남겨뒀어요 — git 이 미머지로 봐요.")
+        print("    squash 머지면 정상이지만, 내용을 확인하기 전엔 -D 로 지우지 마세요:")
+        print(f"      git diff origin/{base} {branch}")
+        print(f"  worktree 만 정리했어요 ('{slug}').")
     if removed:
         # 방금 지운 디렉토리가 셸의 cwd 일 수 있다.
         print(f"  셸이 지워진 경로에 있으면: cd {main}")
@@ -452,18 +520,27 @@ def selftest():
     assert _blocking(["?? phases/x/", " M skills/pipeline/SKILL.md", "?? note.txt"]) == [
         "skills/pipeline/SKILL.md", "note.txt",
     ]
-    # compound 게이트: <docs>/solutions/ 를 건드렸는가.
-    assert _compounded(["docs/solutions/foo.md"], "docs")
-    assert _compounded(["src/a.py", "docs/solutions/GUARDRAILS.md"], "docs")
-    assert not _compounded(["src/a.py", "docs/ADR.md"], "docs")
-    assert not _compounded([], "docs")
+    # compound 게이트 1단(귀속): 이 브랜치가 건드린 <docs>/solutions/ 파일.
+    # bool 이 아니라 목록을 돌려줘야 2단(도착 확인)이 그 위에서 돈다 — 필터가 한 곳뿐이다.
+    assert _solution_notes(["docs/solutions/foo.md"], "docs") == ["docs/solutions/foo.md"]
+    assert _solution_notes(["src/a.py", "docs/solutions/GUARDRAILS.md"], "docs") == [
+        "docs/solutions/GUARDRAILS.md",
+    ]
+    assert _solution_notes(["src/a.py", "docs/ADR.md"], "docs") == []
+    assert _solution_notes([], "docs") == []
+    # 여러 장을 남긴 경우 전부 — 하나라도 도착하면 통과시키려면 목록이 온전해야 한다.
+    assert _solution_notes(["docs/solutions/GUARDRAILS.md", "docs/solutions/a.md"], "docs") == [
+        "docs/solutions/GUARDRAILS.md", "docs/solutions/a.md",
+    ]
     # docs 경로가 다른 레포도 판정된다 (HARNESS_DOCS_PATH).
-    assert _compounded(["documentation/solutions/x.md"], "documentation")
-    assert not _compounded(["docs/solutions/x.md"], "documentation")
+    assert _solution_notes(["documentation/solutions/x.md"], "documentation") == [
+        "documentation/solutions/x.md",
+    ]
+    assert _solution_notes(["docs/solutions/x.md"], "documentation") == []
     # 앞뒤 슬래시가 붙어 와도 같은 결과 — env 값을 그대로 받기 때문.
-    assert _compounded(["docs/solutions/x.md"], "/docs/")
+    assert _solution_notes(["docs/solutions/x.md"], "/docs/") == ["docs/solutions/x.md"]
     # solutions 로 시작만 하는 남의 경로를 compound 로 오인하지 않는다.
-    assert not _compounded(["docs/solutions-old/x.md"], "docs")
+    assert _solution_notes(["docs/solutions-old/x.md"], "docs") == []
     print("selftest OK")
 
 
