@@ -41,3 +41,4 @@ compound 단계에서 새 규칙이 생기면 여기에 추가하고, 다음 작
 - [2026-08-02] 임시 레포 probe 는 결과만 보지 말고 "만들려던 상태가 만들어졌는지"를 함께 출력한다 — `git commit -am` 은 untracked 를 안 담고(`git add -A` 를 쓴다), `set -e` 는 `&&` 체인 끝의 실패를 항상 잡지 않아 fixture 가 조용히 어긋난 채 그럴싸한 출력이 나온다. (근거: [gate-ref-symmetry.md](gate-ref-symmetry.md))
 - [2026-08-02] 확인·게이트 절차를 새로 추가할 때는 기존 확인 지점을 전수 조사해 어떻게 할지 함께 정한다 — "추가"만 설계하면 확인 횟수가 늘어 원래 목적이 뒤집힌다. 계획서가 기존 지점을 한 줄도 언급하지 않았다면 설계가 덜 된 것이다. (근거: [procedure-level-changes.md](procedure-level-changes.md))
 - [2026-08-02] 절차(산문 스킬·런북)를 바꿨으면 부품이 아니라 절차 전체를 최초·재실행 두 상태로 돌려본다 — 재실행에서만 도달하는 조건이 죽어 있어도 부품 검증은 전부 초록불이다. (근거: [procedure-level-changes.md](procedure-level-changes.md))
+- [2026-08-04] 무언가를 "안 쓰인다"고 판단해 지우기 전에 소비자와 **생산자**를 모두 찾는다 — 그 포맷을 만든 도구 자신이 읽는 경우가 가장 잘 빠진다(생산·소비 코드가 같은 도구 안에 있어 레포 Grep 에 안 잡힌다). 지웠을 때 다음 실행이 다시 만들어 놓는다면 죽은 산출물이 아니라 살아 있는 계약이다. (근거: [dead-metadata-consumer-check.md](dead-metadata-consumer-check.md))
