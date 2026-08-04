@@ -1,11 +1,3 @@
----
-date: 2026-08-01
-track: knowledge
-category: best-practices
-title: 외부 도구의 제약은 계획 전에 실측하고, 그 probe 는 디렉토리 단위로 지우지 않는다
-tags: [git-worktree, pipeline, plan, verify, probe, cleanup]
----
-
 # 외부 도구의 제약은 계획 전에 실측하고, 그 probe 는 디렉토리 단위로 지우지 않는다
 
 - 날짜: 2026-08-01
@@ -59,4 +51,4 @@ worktree 안에서 `init` 하면 `<worktree>/.claude/worktrees/` 에 중첩 생�
 - **probe 산출물을 지울 때는 만든 것만 지운다.** 부모 디렉토리 `rmtree` 는 그 안의 추적 파일까지 가져간다. 지운 뒤 `git status` 로 예상 밖 삭제가 없는지 본다.
 - verify 는 "테스트가 또 통과하나" 가 아니라 "계획이 못 본 게 있나" 를 보는 단계로 쓴다. 이번엔 실제로 결함 하나를 더 잡았다.
 
-관련: [ci-check-coverage.md](ci-check-coverage.md) (검사 도구는 일부러 깨뜨려 확인한다 — 이번에도 `_blocking`·`_wt_path` 를 파손해 `exit 1` 을 확인했다), [pipeline.md](pipeline.md)
+관련: [ci-check-coverage.md](ci-check-coverage.md) (검사 도구는 일부러 깨뜨려 확인한다 — 이번에도 `_blocking`·`_wt_path` 를 파손해 `exit 1` 을 확인했다), [ARCHITECTURE.md](../ARCHITECTURE.md)

@@ -1,11 +1,3 @@
----
-date: 2026-08-01
-track: knowledge
-category: best-practices
-title: CI 체크는 "통과하는지"가 아니라 "무엇을 덮는지"로 검증한다
-tags: [ci, github-actions, claude-plugin, validation, harness]
----
-
 # CI 체크는 "통과하는지"가 아니라 "무엇을 덮는지"로 검증한다
 
 - 날짜: 2026-08-01
@@ -54,7 +46,7 @@ CI 체크를 추가할 때 두 가지를 실측한다:
 1. **음성 케이스**: 일부러 깨뜨려서 `exit 1` 이 나오는지. 통과만 확인한 체크는 "항상 초록불"인지 "실제로 막는지" 구분이 안 된다.
 2. **커버리지 대조**: 그 체크가 덮는 파일이, `git log` 상 실제로 자주 바뀌는 파일과 겹치는지. 안 바뀌는 파일만 덮는 체크는 안전망이 아니다.
 
-→ GUARDRAILS.md 에 승격.
+→ [GUARDRAILS.md](GUARDRAILS.md) 에 승격.
 
 ## 부수 교훈 — `gh` 서브커맨드의 Projects classic 에러
 

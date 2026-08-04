@@ -103,7 +103,7 @@ Claude에게 시키면 돼요:
 | TDD 생략 | "이 phase는 **TDD 빼고** 시작해줘" |
 | 자동 이어가기(headless) | "approve 이후 구간 **run으로 이어서 돌려**" (`run`은 resume 전용 — discuss·approve·implement-red 직후·commit-push에서 멈춰요) |
 
-자세한 내용은 `docs/solutions/pipeline.md`.
+자세한 내용은 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ## 사전조건 (필요한 스킬)
 

@@ -1,11 +1,3 @@
----
-date: 2026-08-02
-track: knowledge
-category: best-practices
-title: 절차를 바꾸는 변경은 절차 단위로 설계하고 절차 단위로 검증한다
-tags: [verification, skill-authoring, ux, harness, setup, dead-condition]
----
-
 # 절차를 바꾸는 변경은 절차 단위로 설계하고 절차 단위로 검증한다
 
 - 날짜: 2026-08-02

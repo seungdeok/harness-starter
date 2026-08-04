@@ -41,6 +41,26 @@ Claude Code를 재시작하면 `/ce-brainstorm`, `/ce-plan`, `/ce-code-review`, 
 - `GUARDRAILS.md` — 재발 방지 규칙을 한 줄씩 모은 파일. 다음 작업의 `plan`/`brainstorm`이 먼저 읽는 grounding이에요. (루트 `CLAUDE.md`에서 `@{{DOCS_PATH}}/solutions/GUARDRAILS.md`로 항상 로드돼요.)
 - `<slug>.md` — 개별 해결 노트. 아래 형식을 따라요.
 
+## 다른 문서와의 관계
+
+같은 사건이 문서 셋에 나뉘어 살아요. **무엇이 어디에 사는지**가 기준이에요:
+
+| 문서 | 담는 것 | 예 |
+| --- | --- | --- |
+| [`../ADR.md`](../ADR.md) | **결정** — 무엇을 정했고 왜, 무엇을 포기했나 | "게이트는 도착까지 확인한다 (ADR-012)" |
+| `<slug>.md` (여기) | **서사** — 무슨 일이 있었고 어떻게 알아냈나 | "two-dot 비교가 로컬 커밋을 통과시켰다" |
+| [`GUARDRAILS.md`](GUARDRAILS.md) | **규칙** — 다음부터 이렇게 한다 한 줄 | "ref 비교식은 양변 네임스페이스를 확인한다" |
+
+한 사건이 셋 다에 생기면 **서로 링크해요** — 결정만 읽고 맥락을 못 찾거나, 규칙만 읽고 근거를
+못 찾으면 다음 사람이 같은 조사를 처음부터 다시 해요.
+
+- 노트 → 규칙: 승격한 줄 아래에 `→ GUARDRAILS.md 에 승격`
+- 노트 → 결정: 본문에서 `[ADR-0NN](../ADR.md#adr-0NN)`
+- 결정 → 노트: ADR 항목 끝에 `**관련 노트**: [<slug>.md](solutions/<slug>.md)`
+- 규칙 → 노트: `(근거: [<slug>.md](<slug>.md))`
+
+구조·용어·파이프라인 동작은 노트가 아니라 [`../ARCHITECTURE.md`](../ARCHITECTURE.md)에 써요.
+
 ## 해결 노트 형식 (`{{DOCS_PATH}}/solutions/<slug>.md`)
 
 ```markdown
@@ -66,6 +86,8 @@ Claude Code를 재시작하면 `/ce-brainstorm`, `/ce-plan`, `/ce-code-review`, 
 다음에 같은 실수를 막으려면 무엇을 해야 하나.
 → 규칙으로 일반화되면 GUARDRAILS.md에 한 줄로 승격.
 ```
+
+frontmatter(`---` 블록)는 쓰지 않아요 — 읽는 도구가 없어서 본문과 조용히 갈라져요.
 
 ## 사용법
 

@@ -1,10 +1,39 @@
 # Architecture Decision Records
 
 ## 철학
-<이 프로젝트의 의사결정 원칙 한 단락>
+
+harness 는 **남의 레포에서 도는 plugin** 이다. 대상의 언어도 툴체인도 모르는 게 기본값이라는
+제약이 여기 있는 결정 대부분을 설명한다.
+
+- **강제는 도구가 아니라 규범으로.** lefthook·CI·훅은 대상 레포에 런타임 의존을 만든다.
+  지킬 규칙은 `CLAUDE.md` 와 `GUARDRAILS.md` 에 적고, 기계적 검증이 없다는 비용을
+  그때마다 명시한다 ([ADR-005](#adr-005)·[007](#adr-007)·[013](#adr-013)).
+- **이미 있는 것을 재구현하지 않는다.** 에이전트가 컨텍스트로 가진 정보, git·gh 가 이미 아는
+  사실을 코드로 다시 추측하지 않는다 ([ADR-007](#adr-007)·[012](#adr-012)).
+- **degrade 는 깔끔하게.** 전제가 없으면 기능을 반쯤 하지 말고 그 경로를 통째로 닫고 대안을
+  안내한다 ([ADR-008](#adr-008) 의 hex fail-closed).
+
+각 항목은 **결정 / 이유 / 트레이드오프** 로 적고, 뒤집힌 결정은 지우지 않고 `**후속**` 을 붙인다 —
+원본을 남겨야 판단의 전제가 무엇이었는지 읽을 수 있다.
+
+## 목차
+- [ADR-001](#adr-001) — 파이프라인 phase 규칙 — 브랜치 이름과 compound 분리
+- [ADR-002](#adr-002) — 레포 자체를 Claude Code plugin(`harness`)으로 패키징
+- [ADR-003](#adr-003) — harness 설정 저장소를 `.claude/harness.json` → `.claude/settings.local.json` 의 `env.HARNESS_*` 로 이전
+- [ADR-004](#adr-004) — pipeline stage 재구성 — TDD splice·human gate·resume 전용 run (issue #7)
+- [ADR-005](#adr-005) — `phases/` 를 커밋 대상에서 제외하고 gitignore 규칙도 두지 않는다 (issue #11)
+- [ADR-006](#adr-006) — make-pr·make-issue 는 레포 템플릿을 읽고, 없을 때만 스킬 내장 형식으로 fallback (issue #12)
+- [ADR-007](#adr-007) — 하드 의존 스킬 점검은 코드가 아니라 스킬 지침으로, init 이전에 한다 (issue #13)
+- [ADR-008](#adr-008) — 프로젝트 scope 로 복사한 `pipeline.py` 는 출처 헤더를 달고, 출처를 모르면 복사하지 않는다 (issue #16)
+- [ADR-009](#adr-009) — v0 범위 재정의 — 무커밋을 폐기하고, 축적은 docs=규범 / wiki=사실 로 나누며, compound 는 `done` 이 강제한다
+- [ADR-010](#adr-010) — 배포 관리 3건 — 수동 CHANGELOG·license 명시·매니페스트 검증의 paths 격리 (issue #24)
+- [ADR-011](#adr-011) — 지식 저장소를 `docs/` 로 단일화하고 `.omc/` 는 전부 무시한다 (PR #31)
+- [ADR-012](#adr-012) — compound 게이트는 "건드렸는가"가 아니라 "`origin/<base>` 에 도착했는가"를 묻는다 (issue #32)
+- [ADR-013](#adr-013) — setup 재실행의 확인은 사전 스캔 한 곳에서만 받고, 판정할 수 없으면 `판정불가` 로 적는다 (issue #34)
 
 ---
 
+<a id="adr-001"></a>
 ### ADR-001: 파이프라인 phase 규칙 — 브랜치 이름과 compound 분리
 **결정**: `/pipeline` 파이프라인에서 phase 브랜치는 입력한 이름(slug)을 대문자로 한 `<SLUG>`(예: `SHARE-FORTUNE`, `feat-` 접두어 없음)로 만든다. compound(교훈 기록, CLAUDE.md 5장)는 파이프라인 stage 에서 빼고 `/ce-compound` 로 수동 실행한다.
 **이유**: 브랜치는 phase 이름과 1:1로 눈에 띄게 대응시키는 편이 추적이 쉽다. compound 는 사람이 회고를 판단해야 하는 단계라 자동화 stage 로 묶으면 형식적 기록만 남는다.
@@ -13,6 +42,7 @@
 
 ---
 
+<a id="adr-002"></a>
 ### ADR-002: 레포 자체를 Claude Code plugin(`harness`)으로 패키징
 **결정**: 이 레포 루트에 `.claude-plugin/{plugin.json, marketplace.json}` 을 두어 레포 = plugin = marketplace 로 만든다. 스킬(pipeline·make-pr·make-issue)은 `skills/` 로 이동하고 `pipeline.py` 는 `skills/pipeline/scripts/` 에 번들한다. install-time 스크립팅이 없으므로 프로젝트 초기화는 `/harness:setup` 스킬이 담당한다: scope(글로벌=번들 스크립트+phases 만 / 프로젝트=pipeline.py·docs·CLAUDE.md 전부 복사)와 docs 경로를 물어 `.claude/harness.json` 에 저장하고, CLAUDE.md 는 마커(`<!-- harness:start/end -->`) append 만 한다. `plugin.json` 의 `version` 은 생략해 커밋 SHA 가 버전이 되게 한다. gstack 벤더 스킬(plan-ceo-review/plan-eng-review)은 plugin 에서 제외하고 `.claude/skills/` 에 남긴다.
 **이유**: 레포 하나로 개발·배포·업데이트(`/plugin marketplace update`)가 끝난다. version 생략은 push=업데이트라 "쉬운 업데이트" 요구에 부합. CLAUDE.md append-only 는 사내 프로젝트의 기존 지침 보호. `pipeline.py` 의 ROOT 를 스크립트 위치 → cwd 기준 git root 로 바꿔 글로벌 캐시에서 실행해도 대상 레포에 phase 가 생기고 worktree 동작이 유지된다.
@@ -21,6 +51,7 @@
 
 ---
 
+<a id="adr-003"></a>
 ### ADR-003: harness 설정 저장소를 `.claude/harness.json` → `.claude/settings.local.json` 의 `env.HARNESS_*` 로 이전
 **결정**: harness 설정(`scope`, `docsPath`)을 별도 파일 `.claude/harness.json` 대신 `.claude/settings.local.json` 의 `env` 키에 `HARNESS_SCOPE`/`HARNESS_DOCS_PATH` 환경변수로 저장한다. 스킬은 환경변수를 먼저 읽고, 없으면 파일의 `env` 객체를 직접 읽는다(setup 직후 세션 재시작 전에는 env 주입이 안 되므로). setup 은 이 파일을 merge 만 하고(기존 `enabledPlugins`·다른 env 변수 보존) 덮어쓰지 않는다.
 **이유**: 설정 파일을 하나로 통합(plugin 활성화와 harness 설정이 같은 파일). `env` 는 settings 스키마가 지원하는 키라 unknown-key 경고가 없고, Claude Code 가 세션 환경변수로 주입해 스킬·스크립트가 JSON 파싱 없이 읽을 수 있다.
@@ -28,6 +59,7 @@
 
 ---
 
+<a id="adr-004"></a>
 ### ADR-004: pipeline stage 재구성 — TDD splice·human gate·resume 전용 run (issue #7)
 **결정**: pipeline stage 를 `discuss → plan → [ceo] → [eng] → approve → implement-red/green(TDD, 기본; --no-tdd 시 implement 단일) → verify → commit-push → make-pr` 로 재구성한다. red/green 은 `STAGES` 상수가 아니라 doc-build(`new_phase_doc`) 시 `implement` 자리에 splice 한다. discuss/approve 는 opt-out 없는 필수 human gate 다(계획 승인이 파이프라인의 목적이라 생략 대상이 아니다). headless `run` 은 resume 전용 헬퍼로 격하한다(discuss·approve·implement-red 직후 멈춘다). `verify` 는 `/verify` — `implement` 와 함께 oh-my-claudecode(OMC) 하드 의존이다. plan 산출물은 `phases/<slug>/plan.md` 로 커밋 대상화한다(`.gitignore` 를 `phases/*/*` + `!phases/*/plan.md` 로 재구성).
 **이유**: 계획 승인 게이트·TDD·증거 기반 검증 단계 부재를 해소하면서 브랜치/worktree 병렬성을 유지한다.
@@ -36,64 +68,84 @@
 
 ---
 
+<a id="adr-005"></a>
 ### ADR-005: `phases/` 를 커밋 대상에서 제외하고 gitignore 규칙도 두지 않는다 (issue #11)
 **결정**: `phases/<slug>/` 하위 전체(`plan.md` 포함)를 커밋하지 않는다. 동시에 `.gitignore` 에서 phases 관련 규칙(`phases/*/*` + `!phases/*/plan.md`)을 **제거**하고, `/harness:setup` 도 대상 레포에 `phases/` 를 뿌리지 않는다(gitignore 블록은 `.claude/worktrees/` + `.claude/settings.local.json` 두 줄). 방침은 도구가 아니라 CLAUDE.md §6 규범으로 강제한다. ADR-004 의 plan.md 커밋 대상화 조항을 대체한다.
 **이유**: issue #11 은 setup 이 뿌린 `phases/` 가 plan.md 추적을 막는 문제였다. git 은 디렉토리가 제외되면 하위를 `!` 로 되살릴 수 없어 두 줄 + 재포함 트릭이 필요했고, 그 규칙을 대상 레포마다 정확히 전파하는 비용이 얻는 것보다 컸다. plan.md 를 커밋 대상에서 빼면 규칙 자체가 불필요해져 문제가 증상이 아니라 원인에서 사라진다.
 **트레이드오프**: `phases/` 가 `git status` 에 항상 untracked 로 뜬다 → 의도된 상태로 CLAUDE.md §6 에 명시하고, `git add .` 금지·commit-push stage 의 범위 확인 절차로 오커밋을 막는다. plan.md 가 PR diff 에 안 보여 리뷰어가 계획 문서를 볼 수 없다 → PR 본문에 계획 요약을 넣는 것으로 대체. 검토했으나 버린 안: lefthook pre-commit 차단(대상 레포에 런타임 의존 강요, 설치 보장 불가), 상태 파일을 `.git/harness/<slug>/` 로 이동(`pipeline.py` 변경이 따라와 범위 초과 — 재검토 여지 있음).
+**관련 노트**: [plugin-target-repo-no-dependency.md](solutions/plugin-target-repo-no-dependency.md)
 
 ---
 
+<a id="adr-006"></a>
 ### ADR-006: make-pr·make-issue 는 레포 템플릿을 읽고, 없을 때만 스킬 내장 형식으로 fallback (issue #12)
 **결정**: 두 스킬이 본문을 만들기 전에 레포 템플릿을 탐색한다. PR 은 단일 파일(`.github`/`docs`/루트의 `pull_request_template.md`)과 다중 디렉토리(`.github/PULL_REQUEST_TEMPLATE/*.md`)를 모두 훑고, 이슈는 `.github/ISSUE_TEMPLATE/*.md` 와 레거시 단일 파일을 훑는다. 찾으면 헤딩 구조를 그대로 두고 내용만 채우고, 못 찾을 때만 스킬에 명시된 기본 형식을 쓴다. 이슈 템플릿은 `.md` 만 지원하고 `.yml`(Issue Forms)은 fallback 으로 보낸다. 라벨은 `gh label list` 로 존재를 확인해 있는 것만 붙이고, 없으면 조용히 생략한다(자동 생성하지 않는다). 탐색 명령은 `ls`+glob 이 아니라 `find` 로 통일한다.
 **이유**: 스킬 서술("레포 템플릿 형식에 맞춰")과 실제 동작(하드코딩 본문)이 어긋나 있었다. harness 는 다른 레포에 설치되는 plugin 이라, 템플릿 구조가 다른 레포에서 조용히 틀린 본문을 만들어낸다. `gh pr create --template` 위임은 설치된 gh 2.7.0 에 없고 대화형 에디터 prefill 전용이라 비대화형 `--body` 흐름과 충돌해 탈락했다. 탐색 로직을 공유 문서로 DRY 화하는 안도 호출 지점이 2곳뿐이고 plugin 스킬이 각자 로드되어 상대 참조가 보장되지 않아 탈락했다. `find` 통일은 zsh 에서 glob 매칭 실패가 `2>/dev/null` 을 뚫고 에러를 내기 때문이다.
 **트레이드오프**: `.yml` Issue Forms 를 쓰는 레포는 여전히 fallback 본문을 받는다 → 폼 파싱은 구조 변환이 필요해 범위에서 제외. 라벨을 조용히 생략하므로 의도한 라벨이 안 붙어도 사용자가 모를 수 있다 → 생성 전 최종 확인 단계에서 라벨을 함께 보여주는 것으로 완화. `gh label list --limit 100` 이라 라벨이 100개를 넘는 레포는 뒤쪽이 누락될 수 있다.
+**관련 노트**: [skill-prose-commands.md](solutions/skill-prose-commands.md)
+
 ---
 
+<a id="adr-007"></a>
 ### ADR-007: 하드 의존 스킬 점검은 코드가 아니라 스킬 지침으로, init 이전에 한다 (issue #13)
 **결정**: 파이프라인의 하드 의존 스킬(OMC `/plan`·`/ultrawork`·`/verify`, gstack plan review) 가용성 점검을 `pipeline.py` 코드가 아니라 `skills/pipeline/SKILL.md` §0-1 지침으로 둔다. 판정 근거는 에이전트 컨텍스트에 이미 주어지는 "사용 가능한 스킬 목록"이며, 표에는 목록에 뜨는 식별자(OMC 는 `oh-my-claudecode:` 접두어, gstack 은 무접두어)를 그대로 적는다. 위치는 `init` **이전** — worktree·브랜치 생성 전이라야 손해가 0이다. gstack 누락 시 plan review 를 "권유"가 아니라 **질문 자체에서 제거**하고 `--no-review` 로 고정한다. `STAGES` 주석에 §0-1 동시 갱신 cross-ref 를 둔다(`TDD_PAIR` 주석 선례).
 **이유**: `~/.claude/plugins/cache/**` 등을 glob 하는 코드 점검은 plugin 캐시 경로 규칙·marketplace 이름·플러그인 활성화 여부에 종속돼 오탐과 누락이 모두 난다. 에이전트는 이미 정확한 목록을 갖고 있으므로 코드 0줄이 더 정확하다. 규범을 도구 대신 문서로 강제하는 것은 ADR-005 가 세운 이 레포의 선례다. 미설치는 선호가 아니라 제약이므로 고를 수 없는 선택지를 남기지 않는다(GUARDRAILS 2026-08-01).
 **트레이드오프**: 지침 준수 여부를 기계적으로 검증할 수 없다 → 인정된 비용. 표가 `STAGES` 와 갈라질 수 있다 → 주석 cross-ref 로 완화. `make-pr`(harness 자기 자신)·`compound`(파이프라인이 항상 `--no-compound`)는 표에서 의도적으로 제외했다.
+**관련 노트**: [pipeline-worktree-cwd.md](solutions/pipeline-worktree-cwd.md)
 
 ---
 
+<a id="adr-008"></a>
 ### ADR-008: 프로젝트 scope 로 복사한 `pipeline.py` 는 출처 헤더를 달고, 출처를 모르면 복사하지 않는다 (issue #16)
 **결정**: `/harness:setup` 이 project scope 로 `pipeline.py` 를 복사할 때 shebang 바로 아래에 출처 2줄(`# harness plugin <sha> 에서 복사 (<날짜>) — 갱신: /harness:setup 재실행` + `# 직접 수정하지 마세요 — 재실행 시 덮어쓰입니다.`)을 넣는다. SHA 는 setup 스킬의 base directory 경로 `~/.claude/plugins/cache/harness/harness/<sha>/skills/setup` 에서 읽는다(캐시는 git 레포가 아니라 `git rev-parse` 불가). **그 자리가 12자리 hex 가 아니면 — 즉 plugin 으로 설치된 게 아니면 — 복사 자체를 거부**하고 plugin 설치 또는 글로벌 scope 를 안내한다. 재실행 시에는 헤더 SHA 와 번들 SHA 를 비교해 같으면 스킵, 다르거나 헤더가 없으면(구본) 확인 후 덮어쓰되, 묻기 전에 대상 파일의 uncommitted 수정 여부를 확인해 유실을 경고한다. 이 덮어쓰기를 "기존 파일을 덮어쓰지 않는다" 절대 규칙의 **유일한 명시적 예외**로 문서화한다. ADR-002 가 남긴 "복사본은 자동 갱신되지 않는다" 트레이드오프의 후속 완화다.
 **이유**: 캐시에 여러 SHA 가 실제로 공존하고 그 사이 stage 구성이 바뀌었다(ADR-004). 출처가 없으면 사용자는 자기 복사본이 낡았는지 알 수 없고, ADR-002 가 약속한 "setup 재실행으로 갱신"은 절대 규칙과 충돌해 실제로 동작하지 않았다. SHA 를 못 구할 때 그럴듯한 문자열을 적는 것은 이슈가 고치려는 증상(출처를 믿을 수 없음)을 그대로 재생산하므로, 거짓 출처를 만드느니 복사하지 않는다 — 덤으로 `unknown` 상태가 없어 재실행 비교에 분기가 늘지 않는다. 헤더는 주석 2줄이라 대상 레포에 런타임 의존을 만들지 않고(GUARDRAILS), git 상태 확인도 이미 대상 레포의 전제다.
 **트레이드오프**: 비-plugin 설치(로컬 clone·symlink 개발)에서는 project scope 를 못 쓴다 → 글로벌 scope 로 정상 동작하므로 degrade 는 깔끔하다. CI 는 헤더 없는 번들 원본만 검사하므로 헤더 경로를 영영 덮지 않는다 → 주석 2줄이 파이썬을 깨뜨리는지 CI 로 지키는 것은 과잉이라 판단하고, 헤더 삽입본의 `selftest` 통과·2줄 제거 시 원본과 byte-identical·`__file__` 미사용을 1회 실증으로 대신했다. 실제 미검증 리스크는 코드가 아니라 절차의 재현성이며 CI 로 잡을 수 없다. 검토했으나 버린 안: shim(복사 대신 plugin 번들 exec — project scope 의 존재 이유를 깨고 캐시 런타임 의존 발생), 사이드카 파일(복사본과 분리돼 유실), `.bak` 백업(git 이 이미 하는 일). `pipeline.py status` 가 번들 SHA 와 비교해 경고하는 안은 실행 스크립트에 글로벌 캐시 경로 의존을 만들어 제외했다(이슈도 우선순위 낮음으로 명시).
+**관련 노트**: [pr-scope-two-dot-diff.md](solutions/pr-scope-two-dot-diff.md)
 
 ---
 
+<a id="adr-009"></a>
 ### ADR-009: v0 범위 재정의 — 무커밋을 폐기하고, 축적은 docs=규범 / wiki=사실 로 나누며, compound 는 `done` 이 강제한다
 **결정**: 외부 설계 문서("AI Native OS 구축 계획")가 제시한 v0 작업 9개 중 **2개만** 채택한다. (a) `_git_root()` 를 fail-closed 로 — git 밖이면 `Path.cwd()` 폴백 대신 `sys.exit`. (b) `pipeline.py done` 에 compound 게이트 — 정리 전에 그 브랜치가 `<docs>/solutions/` 를 건드렸는지 `git diff --name-only origin/<base>...<branch>` 로 확인하고, 아니면 **아무것도 지우지 않고 거부**한다(`--force` 로 우회, base 는 `origin/HEAD` 에서 읽고, origin 이 없으면 차단이 아니라 경고). 함께 그 문서의 §3.1 **무커밋 원칙을 폐기**한다 — 축적은 커밋 대상이다. 축적점은 역할로 나눈다: `docs/` 는 사람이 쓰고 PR 로 리뷰하는 **규범**(ADR·GUARDRAILS·solutions), `.omc/wiki/` 는 OMC 가 세션을 넘겨 쌓는 **사실**. 후자를 gitignore 에서 풀어 커밋하고 `CLAUDE.md` 가 `@.omc/wiki/index.md` 한 장만 물게 한다. `--where`·`--version`·`--repo`·plan-first 훅·phase 산출물 이동·`phase.json` schema 버전은 **채택하지 않는다**.
 **이유**: 그 문서의 "현재 상태" 절이 레포보다 낡아 있었다 — plugin 전환(ADR-002)·`.gitignore` 의 `.omc/` 는 이미 완료였고, phase 산출물 이동은 ADR-005 가(issue #11), 훅 강제는 ADR-007 이 이미 검토하고 거부한 안이었다. 반대로 그 문서가 "이미 강제된다"고 적어 둔 compound 누락이 유일한 실제 구멍이었다(ADR-001 이 compound 를 파이프라인에서 뺐고 SKILL 은 늘 `--no-compound` 로 돈다). 미검증으로 표시된 V-1(`--git-common-dir` 이 worktree 에서 메인을 가리키는가)은 임시 worktree 로 즉시 실증됐고 이미 `_main_root()` 에서 쓰이고 있었다. `.omc/wiki` 를 축적지로 삼으라는 제안은 그 경로가 OMC 의 라이브 데이터스토어(자동 재생성 `index.md`, `wiki_lint`, 세션 훅)라 성립하지 않았고, 대신 그 wiki 를 잃지 않게 커밋 대상으로 올리는 쪽이 같은 목적을 더 싸게 달성한다. 무커밋은 ADR-008 의 project scope 복사와도 정면 충돌했다.
 **트레이드오프**: `ROOT` 가 모듈 로드 시점 평가라 fail-closed 이후 `selftest`·`--help` 도 git repo 안에서만 돈다 → CI 는 checkout 후 실행이라 영향 없고, docstring 에 의도된 비용으로 명시했다. compound 게이트는 "`docs/solutions/` 를 건드렸는가"라는 **대리 지표**라 빈 파일을 만들어도 통과한다 → 형식적 통과를 막는 것은 사람의 몫이고, 게이트의 목적은 증류를 잊는 것을 막는 데 있다. `.omc/wiki` 커밋은 OMC 가 `.omc/.gitignore` 에 `wiki/` 를 매 실행 되돌리는 것과 싸운다 → 재생성 조건이 `content.includes('wiki/')` 부분 문자열 검사라 `!wiki/` 로 두면 유지되고, 그 파일도 함께 커밋해야 clone 직후 첫 실행에서 다시 무시되지 않는다(OMC 구현 세부에 의존하는 취약점으로, 상류가 바뀌면 재검토 대상). 루트 `.gitignore` 의 `.omc/` 를 `.omc/*` 로 바꾸면 루트 고정이 되어 하위 `.omc` 가 새므로 `*/**/.omc/` 를 함께 둔다. 채택하지 않은 6개는 필요가 실증되면 그때 되살린다 — 특히 `--where` 는 V-2(worktree 세션에 env 가 도달하는가)·V-5(서브에이전트 cwd 상속)를 판정할 수단이었으나, env 계층과 `--repo` 를 만들지 않기로 해 판정 대상 자체가 사라졌다.
 **후속**: 게이트의 판정 기준(`origin/<base>...<branch>`)은 우변이 로컬 ref 라 push·머지 안 된 커밋을 통과시켰다 — ADR-012 가 "도착했는가"로 고친다. `.omc/wiki` 를 커밋 대상으로 올린 조항은 ADR-011 로 **철회됐다**. 그 조항의 목적은 "OMC 가 자동으로 쌓는 것을 잃지 말자"였는데, 정작 자동 생성물이 쓸모없어 issue #29 에서 전부 무시 대상이 됐고, 지키려던 대상이 사라졌다.
+**관련 노트**: [spec-baseline-drift.md](solutions/spec-baseline-drift.md)
 
 ---
 
+<a id="adr-010"></a>
 ### ADR-010: 배포 관리 3건 — 수동 CHANGELOG·license 명시·매니페스트 검증의 paths 격리 (issue #24)
 **결정**: (a) `CHANGELOG.md` 를 새로 두고 **사람이** 사용자 영향 있는 변경만 한 줄씩 적는다. 헤딩은 `## <YYYY-MM-DD>` 날짜만 쓰고 항목 끝에 이슈/PR 번호를 단다. (b) `plugin.json` 에 `"license": "MIT"` 를 넣되 **`version` 은 계속 생략한다**(ADR-002 유지). (c) `claude plugin validate` 를 `validate.yml` 에서 떼어 `plugin-validate.yml` 로 옮기고 `paths: ['.claude-plugin/**']` 를 건다 — `validate.yml` 에는 `pipeline.py selftest` 만 남아 모든 PR 에서 계속 돈다. 규범은 루트 `CLAUDE.md` §7 에만 두고 `skills/setup/templates/CLAUDE-section.md` 미러에는 **넣지 않는다**.
 **이유**: `version` 필드를 넣으면 플러그인 캐시 경로가 `harness/<version>` 이 되어 ADR-008 의 12자리 hex fail-closed 가 project scope 복사를 **거부**한다(`ponytail/4.8.4`·`oh-my-claudecode/4.15.7` 캐시 경로로 실증). release-please 는 그 bump 를 강제하므로 CHANGELOG 를 얻는 대가로 setup 의 절반을 깬다. **GitHub Releases 는 다르다** — 태그만 찍으면 `plugin.json` 을 안 건드려 ADR-008 이 깨지지 않는다. Releases 를 배제한 진짜 이유는 릴리스 작성이 **머지 후 별도 행동**이라 PR 리뷰가 누락을 못 잡고, 에이전트가 clone 한 상태에서 확인할 수 없다는 것이다. 이 레포는 에이전트가 `CLAUDE.md` 를 읽고 굴리므로 같은 PR 안에서 고쳐야 하는 파일만 규범으로 강제된다 — 같은 이유로 미러에는 넣지 않는다(대상 레포는 플러그인이 아니라 지킬 이유가 없다). CI 분리의 근거는 `docs/solutions/ci-check-coverage.md`(2026-08-01, issue #15) 가 이미 실측해 둔 것이다: `validate` 는 `.claude-plugin/*.json` 만 보고 `skills/**/SKILL.md` 는 안 본다. **그 커버리지 사실은 그때도 알고 유지하기로 한 것이라 결정을 뒤집는 새 정보가 아니다.** 이번의 새 정보는 unpinned CLI 가 매니페스트와 무관한 PR 을 빨갛게 만드는 비용이며, paths 필터는 그 비용만 없애고 게이트는 그대로 둔다. 부수 효과로 unpinned `npm i -g` 실행 빈도가 "모든 PR" 에서 "매니페스트 변경 시"로 떨어져 공급망 노출도 함께 준다.
 **트레이드오프**: 수동 CHANGELOG 는 자동으로 쌓이지 않아 빼먹으면 그냥 구멍이다 — 강제 수단 없이 `CLAUDE.md` §7 규범과 PR 리뷰로만 막는다(도구 대신 문서로 강제하는 ADR-005/007 의 선례, 인정된 비용). 헤딩에 SHA 를 못 넣는다: 사용자가 받는 SHA 는 머지 후 생기는 커밋의 것인데 `CHANGELOG.md` 는 그 커밋 *안에* 들어가므로 작성 시점에 알 수 없고, 머지 후 채우는 절차는 반드시 썩는다 → 날짜 + 이슈/PR 번호로 갈음. `paths` 필터 탓에 매니페스트를 안 건드리는 PR 은 매니페스트 검증을 못 받지만, 그런 PR 은 매니페스트를 바꾸지 않으므로 검증할 것이 없다. 더 위험한 것은 `paths` 값의 오타다 — 워크플로우가 영영 안 도는데 "체크가 안 보이는 것"이 이 설계에선 정상 동작이라 구분이 안 된다(침묵 실패). 매칭을 실측해 보면 위험한 오타는 `*`/`**` 가 아니라 **디렉토리명**이다: `.claude-plugin/**` 와 `.claude-plugin/*` 는 이 평평한 디렉토리에서 똑같이 2/2 를 잡고(`*` 는 `/` 를 안 넘을 뿐 한 단계 파일은 잡는다), `.claude-plugins/**`·`claude-plugin/**` 는 0/2 를 잡으며 조용히 통과한다. `**` 를 택한 것은 나중에 `.claude-plugin/` 아래 하위 디렉토리가 생겨도 계속 잡히게 하려는 것이다. 그래서 매니페스트를 바꾼 PR 에서 `plugin-validate` 가 실제로 뜨는지 확인하는 것을 도입 시 필수 절차로 둔다(GUARDRAILS 2026-08-01 "일부러 깨뜨려 확인한다"의 역방향 — 여기선 "돌아야 할 때 도는지"가 침묵 쪽이다). 게이트 자체는 살아 있음을 실측했다: `plugin.json` 을 파손하면 `claude plugin validate` 가 `exit 1`, 정상이면 `exit 0`. 검토했으나 버린 안: CLI 버전 고정(dependabot 이 없어 검증이 영영 낡는다), 스텝 완전 제거(매니페스트가 깨지면 플러그인 전체가 설치 불가라 파급이 크다), CI 자동 생성(git-cliff — `contents: write` 권한 + 내용 없는 업데이트 커밋 + 커밋 필터 설정이 커밋 18개 레포에는 과하다), 기존 커밋 소급 기재(이슈가 요구한 "앞으로 뭐가 바뀌는지 안다"에 기여하지 않는다 → 커밋 히스토리 링크로 갈음).
+**관련 노트**: [ci-check-coverage.md](solutions/ci-check-coverage.md)
 
 ---
 
+<a id="adr-011"></a>
 ### ADR-011: 지식 저장소를 `docs/` 로 단일화하고 `.omc/` 는 전부 무시한다 (PR #31)
 **결정**: ADR-009 가 세운 "축적은 `docs/`=규범 / `.omc/wiki/`=사실 로 나눈다" 중 **후자를 철회**한다. 루트 `.gitignore` 를 `.omc/*` + `!.omc/wiki/` + `!.omc/.gitignore` + `*/**/.omc/` 네 줄에서 **`.omc/` 한 줄**로 되돌리고(슬래시 앞에 경로가 없어 모든 깊이를 잡는다), 추적 중이던 `.omc/.gitignore`·`.omc/wiki/*.md` 를 untrack 한다. `CLAUDE.md` 의 `@.omc/wiki/index.md` 임포트를 제거한다. 지식은 `docs/` 한 곳에만 쌓는다 — 사건 서사는 `docs/solutions/<slug>.md`, 일반화된 규칙은 `GUARDRAILS.md`, 결정은 `ADR.md`, 구조·용어는 `ARCHITECTURE.md`.
 **이유**: ADR-009 는 `.omc/wiki` 를 **축적지로 삼는 안을 이미 기각**했고("그 경로가 OMC 의 라이브 데이터스토어라 성립하지 않았다"), 커밋한 것은 순전히 **잃지 않기 위해서**였다. 그런데 issue #29 가 OMC 자동 생성물(`session-log-*`·`log.md`·`environment.md`)을 전부 무시 대상으로 뺐다 — 지키려던 대상이 사라지고 추적되는 건 파생물인 `index.md` 하나만 남았다. 그 상태에서 사람이 페이지를 손으로 써 넣으면 그건 ADR-009 가 기각한 바로 그 안이 되는데, 실제로 PR #31 에서 9장을 그렇게 만들었다가 되돌린다. 자동화 기능은 이 레포에서 한 주 동안 전부 마이너스였다: 세션 캡처는 정보량 0, `environment.md` 는 `[object Object]`, `index.md` 는 페이지 수가 틀리고 무시 대상을 링크하며, `links` frontmatter 는 본문과 갈라져 broken-ref 를 두 번 유발했다. `wiki_query` 의 키워드·태그 검색은 `docs/` 를 Grep 하는 것과 동등하고, 인덱스가 낡지 않는 만큼 Grep 이 낫다. 반대로 `docs/` 는 PR 리뷰를 거치고 `GUARDRAILS.md` 가 `@` 로 매 세션 확실히 로드된다. 저장소가 둘이면 같은 교훈이 서사·레퍼런스·한 줄 규칙 3중으로 존재해 파생층이 조용히 낡는다.
 **트레이드오프**: OMC 의 wiki 축적은 이제 로컬에만 남아 clone 하면 사라진다 → 애초에 지킬 값이 있는 내용을 만들지 못했으므로 손실이 아니고, 값이 생기면 `docs/` 로 증류하는 경로가 이미 있다(compound). `wiki_query`·`wiki_lint` 를 쓰지 못한다 → Grep 과 PR 리뷰로 대체되며, lint 가 잡던 broken-ref 는 저장소가 하나면 발생 빈도 자체가 준다. `.omc/` 를 다시 통짜로 무시하므로 나중에 일부만 되살리려면 ADR-005 가 지적한 "디렉토리를 제외하면 하위를 `!` 로 되살릴 수 없다" 제약을 다시 만난다 → 되살릴 필요가 실증되면 그때 `.omc/*` 형태로 되돌린다. 구조·용어 문서는 `ARCHITECTURE.md` 가 아직 빈 템플릿이라 갈 곳이 준비돼 있지 않다 → 별도 작업으로 채운다(이 PR 범위 밖).
+**후속**: "`ARCHITECTURE.md` 가 빈 템플릿이라 구조·용어가 갈 곳이 없다"는 트레이드오프는 해소됐다 — `docs/solutions/pipeline.md`(해결 노트 형식을 안 따르는 레퍼런스 문서였다)를 `ARCHITECTURE.md` 로 옮겨 채웠다. 같은 정리에서 다른 프로젝트 노트(`click-cooldown.md`)를 지우고, 노트의 죽은 frontmatter(wiki 가 읽던 `tags`·`track`)를 제거했으며, ADR↔노트↔GUARDRAILS 상호참조를 실제 링크로 바꿨다(ADR 에 `<a id="adr-NNN">` 앵커 + 목차).
+**관련 노트**: [verification-trigger-coverage.md](solutions/verification-trigger-coverage.md) · [omc-wiki-page-authoring.md](solutions/omc-wiki-page-authoring.md)
 
 ---
 
+<a id="adr-012"></a>
 ### ADR-012: compound 게이트는 "건드렸는가"가 아니라 "`origin/<base>` 에 도착했는가"를 묻는다 (issue #32)
 **결정**: ADR-009 가 넣은 `done` 의 compound 게이트를 두 단계로 나눈다. (1) **귀속** — `git diff --name-only origin/<base>...<branch>` 로 이 브랜치가 바꾼 `<docs>/solutions/` 파일 목록을 얻는다(없으면 `compound 미수행`). (2) **도착** — `gh pr list --head <branch> --state all --json state,commits` 로 PR 을 보고, `state != MERGED` 거나 로컬 tip 이 PR 커밋 SHA 목록에 없으면 거부한다. gh 미설치·미인증·비-GitHub·오프라인·PR 없음이면 `None` 이 나오고 내용 비교로 폴백한다 — 노트 목록 중 **하나라도** `git diff --quiet origin/<base> <branch> -- <file>` 이 exit 0 이면 통과. 판정 전에 `git fetch --quiet origin <base>` 를 시도하고 실패는 무시한다. 두 실패는 **다른 메시지**를 낸다(할 일이 `/ce-compound` 실행 vs push·머지로 다르다). `--force` 우회와 "origin 없으면 차단이 아니라 경고"는 ADR-009 그대로 유지한다. 코드는 `_compounded(...) -> bool` 을 `_solution_notes(...) -> list[str]` 로 바꾸고, 3분기 판정은 순수 함수로 뽑지 않고 `cmd_done` 에 인라인한다. 함께 **`git branch -d` 가 실패했을 때 `✓ 정리 완료` 를 찍지 않는다** — 남았다고 말하고 `git diff origin/<base> <branch>` 를 안내한다(게이트가 아니라 출력이라 `--force` 여부와 무관하게 적용).
 **이유**: 기존 비교식 `origin/{base}...{branch}` 는 좌변이 원격 ref, **우변이 로컬 ref** 였다. 그래서 push 도 머지도 안 된 로컬 커밋이 게이트를 통과했다 — 게이트가 막으려던 상황("정리하면 이 작업이 아무것도 남기지 못한다")이 정확히 그 상태인데도. 2026-08-01 phase `omc-wiki-gitignore` 에서 실제로 발생했다: PR #30 이 머지된 **뒤** `/ce-compound` 가 `d5268b5` 를 만들었고(파이프라인의 `commit-push` stage 는 이미 지나갔고 compound 는 파이프라인 밖이라 push 를 유도하는 단계가 없다 — ADR-001 의 구조적 귀결), `done` 은 `✓ 정리 완료` 를 찍었다. 커밋이 살아남은 것은 squash 머지라 `git branch -d` 가 "not fully merged" 로 거부했기 때문이지 게이트의 설계가 아니었다 — 보호의 근거가 "compound 가 안 올라갔다"가 아니라 "머지 방식이 squash 였다"인 것은 안전장치가 아니다. two-dot 은 도달 가능성이 아니라 **내용**을 묻기 때문에 squash·rebase·cherry-pick·별도 PR 어느 경로로 머지돼도 같은 답을 낸다(실제로 이번 노트는 `WIKI-PROJECT-TERMS` 로 cherry-pick 해 구조했다). 임시 레포로 세 케이스를 실증했다: A(머지 후 compound 가 로컬에만) 현행 오통과 → 신규 차단, B(도착 + base 가 남의 노트로 전진) 양쪽 통과, C(compound 미수행) 양쪽 차단. `fetch` 를 넣은 것은 `done` 이 PR 머지 직후에 돌아 로컬 `origin/<base>` 가 낡아 있기 쉽고, 낡으면 도착한 노트를 미도착으로 오판해 `--force` 를 습관화시키기 때문이다. 3분기를 순수 함수로 뽑지 않은 것은 그 안에 로직이 없어서다 — 진짜 로직(prefix 매칭·two-dot)은 바깥에 남고 분기만 검증하게 되며, git 쪽에 pathspec 을 함께 주면 경로 필터가 두 곳에 생겨 드리프트한다(ADR-007 이 세운 "이미 있는 것을 재구현하지 않는다"의 같은 축).
 **트레이드오프**: `any()` 판정이라 compound 가 **`GUARDRAILS.md` 만** 건드린 경우, base 가 남의 규칙으로 전진했으면 내용이 갈려 오탐 차단된다 → `--force`. CLAUDE.md §5 가 `<slug>.md` 를 먼저 쓰고 GUARDRAILS 는 승격이라 정상 흐름엔 노트 파일이 있다. `fetch` 에 타임아웃을 못 건다 — macOS 기본에 `timeout(1)` 이 없어 portable 하지 않고, 네트워크가 죽으면 `done` 이 git 기본 타임아웃까지 매달린다(fetch 를 빼는 대안은 오탐 차단을 늘려 더 나쁘다). `git diff --quiet` 의 exit 128(잘못된 ref)이 exit 1 과 함께 "미도착"으로 묶여 차단된다 — 판정 불가일 때 막는 쪽이 안전하므로 의도한 동작이다. ADR-009 가 이미 명시한 한계(빈 파일을 만들어도 통과하는 대리 지표)는 **그대로 남는다** — 이 이슈는 다른 축이었다. 게이트가 git 호출에 의존해 `selftest` 로 못 덮는다 → 순수 함수 `_solution_notes` 만 selftest 가 덮고, 3분기와 도착 판정은 임시 레포 실증으로 대신한다(ADR-008 의 "1회 실증" 선례). gh 경로를 채택하면서 얻은 것과 남은 것: PR 판정은 squash·rebase·base 전진에 전부 무관하고 `docs/solutions/` **밖** 작업까지 지켜서, 내용 비교가 안고 있던 `GUARDRAILS.md` 오탐 한계가 그 경로에서는 사라진다. 대신 `gh` 는 **하드 의존이 될 수 없다** — harness 는 남의 레포에 설치되는 plugin 이고 GUARDRAILS 가 "대상 레포에 런타임 의존을 만들지 않는다"를 명시한다. 그래서 폴백을 유지하며 코드 경로가 둘로 늘어나는 것은 인정된 비용이고, 폴백 쪽에는 `GUARDRAILS.md` 단독 오탐이 그대로 남는다. gh 버전 의존도 실재한다: `headRefOid` 는 설치된 2.7.0 에 없어 `commits[].oid` 로 우회했다(GUARDRAILS "CLI 플래그는 설치된 버전에 실제 있는지 확인한다"가 JSON 필드에도 적용된다). 검토했으나 버린 안: **로컬 git 으로 같은 2단계 판정**(`git diff --quiet origin/<base> <branch>` → `git log origin/<base>..<branch>`; 실측에서 무너졌다 — 1단계는 base 가 전진하면 남의 파일 때문에 exit 1 이 되고, 2단계는 squash 라 이미 머지된 커밋을 계속 세어 케이스 A(로컬에만)와 케이스 B(전부 머지됨)가 **양쪽 신호 모두 동일**해진다 → 정상 상황에서 모든 phase 차단. `git cherry` 도 squash 는 patch-id 가 달라져 안 된다. 같은 질문을 GitHub 에 물어서 해결했다), **`origin/{branch}` 로만 교체**(이슈의 "최소 수정" — 이번 사고는 PR 머지 *후* compound 라 push 했어도 `main` 에 못 들어가 같은 사고가 재발하고, 원격 브랜치를 머지 후 자동 삭제하는 레포에선 ref 가 없어 판정 자체가 불가), **미push 커밋 경고만**(게이트가 아니게 된다), **`origin/<base>` 에 solutions 파일이 있는지만 확인**(`GUARDRAILS.md` 가 항상 있어 무조건 통과 — 귀속 단계 없이는 성립하지 않는다).
+**관련 노트**: [gate-ref-symmetry.md](solutions/gate-ref-symmetry.md)
 
 ---
 
+<a id="adr-013"></a>
 ### ADR-013: setup 재실행의 확인은 사전 스캔 한 곳에서만 받고, 판정할 수 없으면 `판정불가` 로 적는다 (issue #34)
 **결정**: `/harness:setup` 에 `## 2. 사전 스캔` 절을 신설한다(§1 질문 뒤, 어떤 쓰기보다 앞. 기존 §2~§5 는 §3~§6 으로 밀린다). 스캔은 대상 6종(`settings.local.json` 의 `env.HARNESS_*`, `.gitignore` 두 줄, `.gitignore` 의 `phases/` 잔재, `scripts/pipeline.py`, `<docs>` 템플릿 5종, `CLAUDE.md` 마커)을 훑어 `없음`/`동일`/`다름`/`판정불가` 로 분류한다. (a) **확인 지점을 스캔 하나로 수렴한다** — 기존 인라인 확인 3곳(`:52` settings·`:97` pipeline.py·`:117` CLAUDE.md 마커)은 "스캔 결정을 적용"만 하고 다시 묻지 않으며, ADR-008 이 요구한 "로컬 수정이 있습니다" 경고도 스캔 프롬프트로 함께 옮긴다. 신규 append 미리보기(`:116`)는 `없음` 경로라 그대로 둔다. (b) **번들 SHA 를 읽을 자리가 12자리 hex 가 아니면 `판정불가`** 로 적고 갱신 후보에서 뺀다. (c) **`CLAUDE.md` 마커 행은 §6 의 "모두 최신" 판정에서만 제외**한다. 함께 `.gitignore` 두 줄은 블록이 아니라 **줄 단위**로 판정하고, `<docs>` 템플릿 5종은 존재하면 무조건 스킵하며 내용을 비교하지 않고, §6 종료 안내에 `생성`/`갱신`/`스킵` 을 파일 단위로 사유와 함께 출력한다(변경 0건에도 출력). SHA 스탬프(`<!-- harness:start sha=... -->`)는 도입하지 않는다.
 **이유**: (a) 사전 스캔만 얹으면 확인 지점이 4곳 → 5곳으로 **늘어난다** — 이슈가 고치려던 "확인을 한 번에"의 정반대다. 결정 지점이 둘이면 같은 질문이 두 번 나가고, 판정 근거가 두 곳에 살아 조용히 갈라진다(ADR-007 이 `STAGES`↔`§0-1` cross-ref 로 다룬 것과 같은 축이라 스캔 표에도 같은 형태의 cross-ref 를 둔다). (b) 비-plugin 설치는 ADR-008 이 명시적으로 허용한 degrade 경로인데, 거기서 `동일` 로 찍는 것은 ADR-008 이 "거짓 출처를 만드느니 복사하지 않는다"로 거부한 바로 그 실수를 상태 표에서 반복하는 것이다 — 모르는 것은 모른다고 적는다. (c) 마커 존재 여부로만 판정하므로 setup 을 한 번 돌린 레포에서는 마커 행이 **영구히 `다름`** 이다. 이걸 "모두 최신" 판정에 넣으면 다른 게 전부 그대로여도 그 문구가 **영영 출력되지 않아** AC 가 죽은 조건이 된다. 이건 추론이 아니라 실측이다 — 임시 git 레포에 새 절차를 적용해 setup 을 2회 돌린 probe(V9·V10)가 `다름=1건`·요약 블록 미출력로 잡아냈고, 그 전에 통과한 V1~V8(셸 명령 단위 8건)은 전부 초록불이었다. `<docs>` 템플릿을 2상태로 둔 것도 같은 종류의 판단이다: 사용자가 채우는 문서라 재실행 시 **항상** 템플릿과 다르고(이 레포 `docs/ADR.md` 만 봐도 빈 템플릿과 100% 다르다), diff 를 띄우면 매번 노이즈라 진짜 신호를 묻는다.
 **트레이드오프**: (c) 의 예외는 **하드코딩된 특수 케이스**라 근거 없이 보면 임의로 읽힌다 → §2·§6 양쪽에 이유를 인라인으로 적었다. 그 대가로 `CLAUDE.md` 마커가 있는 레포는 **재실행마다 확인 프롬프트가 1회 뜬다** — 검토한 대안은 마커 사이 내용을 치환된 템플릿과 문자열 비교해 같으면 `동일` 로 두는 것이었고 그러면 프롬프트가 0회가 되지만, 판정 방식을 바꾸지 않기로 한 결정과 부딪혀 채택하지 않았다(필요가 실증되면 되살린다). SHA 스탬프를 안 넣으므로 "플러그인이 업데이트돼서 다른 것"과 "사용자가 블록을 고쳐서 다른 것"은 여전히 구분되지 않는다 — 구분하려면 *이전* 템플릿이 필요한데 옛 SHA 캐시 디렉토리가 남는다는 보장이 없다. 스캔 표와 §3~§5 서술은 갈라질 수 있다 → cross-ref 한 줄로 완화(ADR-007 과 같은, 기계적 검증 없는 인정된 비용). 이 변경은 산문이라 **어떤 CI 도 검증하지 않는다**(`ci-check-coverage.md`, issue #15 가 실측: `validate` 는 `.claude-plugin/*.json` 만 본다) → 임시 레포 probe 로 대신했고, 조건을 뒤집는 역방향 확인(`phases/` 주입 시 `없음`→`다름`, 원복 시 복귀)까지 붙여 스캔이 실제 파일 상태를 읽는다는 것을 실증했다. 남는 미검증은 "실제 에이전트가 이 산문을 읽고 같은 판정을 내리는가"이며, probe 는 절차를 사람이 그대로 적용한 것이라 거기까지는 보증하지 않는다. `skills/setup/templates/CLAUDE-section.md` 미러는 건드리지 않았다 — 이번 변경은 setup 자신의 절차이지 대상 레포에 뿌리는 규범이 아니다(ADR-010 의 미러 판단 기준). 검토했으나 버린 안: **`판정불가` 행을 표에서 아예 숨기기**(복사본이 실재하는데 안 보여 "없는 것"과 "모르는 것"이 구분 안 됨 — 침묵 실패), **`CLAUDE.md` 를 `판정불가` 로 분류**(프롬프트는 0회가 되지만 setup 재실행으로 블록을 영영 갱신 못 해 기능 후퇴), **섹션 번호 대신 앵커 도입**(`§N` 참조가 레포 전체에 `SKILL.md:22` 단 1건이라 renumber 가 더 싸다 — 실측), **`TODOS.md` 신설**(ADR-011 이 지식 저장소를 `docs/` 하나로 정했다).
-
+**후속**: 스캔 대상 6종 중 **`.gitignore` 의 `phases/` 잔재 행은 제거**했다(2026-08-04). 스캔이 유일하게 **남의 파일을 지우자고 제안하는** 행이었고, 그 대상은 setup 이 만든 것도 아니어서 "기존 파일을 덮어쓰지 않는다"는 원칙과 결이 어긋났다. 잔재는 사용자가 직접 지운다. 나머지 5종과 §2 의 단일 확인 지점 설계는 그대로다.
+**관련 노트**: [procedure-level-changes.md](solutions/procedure-level-changes.md)

@@ -1,11 +1,3 @@
----
-date: 2026-08-02
-track: knowledge
-category: best-practices
-title: 게이트는 "무엇을 봤는가"가 아니라 "무엇을 보증하는가"로 읽는다 — 비교식 양변의 ref 종류
-tags: [git, gate, verification, pipeline, compound, harness, pure-function]
----
-
 # 게이트는 "무엇을 봤는가"가 아니라 "무엇을 보증하는가"로 읽는다 — 비교식 양변의 ref 종류
 
 - 날짜: 2026-08-02
@@ -161,7 +153,7 @@ PR 없는 브랜치에서 여전히 돌아야 하기 때문이다 — harness �
   squash 는 커밋 연결을 끊지만 그 연결을 아는 쪽은 머지를 수행한 GitHub 이다. 로컬 휴리스틱을 정교하게
   깎는 것보다 물을 상대를 바꾸는 게 정확하다 — 대신 그 시스템에 못 닿을 때의 폴백은 설계에 포함한다.
 
-→ GUARDRAILS.md 에 승격.
+→ [GUARDRAILS.md](GUARDRAILS.md) 에 승격.
 
 ## 부수 교훈 1 — 순수 함수 추출은 로직이 있는 곳에서만
 
@@ -182,7 +174,7 @@ PR 없는 브랜치에서 여전히 돌아야 하기 때문이다 — harness �
 - 이미 있는 함수의 **반환 타입을 넓히는 것**이 새 함수를 만드는 것보다 먼저다 — 호출부가 하나 늘 뿐
   테스트 자산이 유지된다.
 
-→ GUARDRAILS.md 에 승격.
+→ [GUARDRAILS.md](GUARDRAILS.md) 에 승격.
 
 ## 부수 교훈 2 — 임시 레포 probe 는 만든 상태를 되짚어 확인한다
 
@@ -209,7 +201,7 @@ git commit -qam feat                                          # -a 는 untracked
 - `set -e` 는 `&&` 체인 끝의 실패를 항상 잡아 주지 않는다. probe 는 실패를 조용히 넘기는 쪽이 기본값이라고
   보고, 중간 상태를 확인하는 출력을 끼워 넣는다.
 
-→ GUARDRAILS.md 에 승격.
+→ [GUARDRAILS.md](GUARDRAILS.md) 에 승격.
 
 ## 부수 교훈 3 — 못 막는 것은 게이트를 넓히지 말고 거짓말을 멈춘다
 
@@ -233,7 +225,7 @@ else:
 - **판정할 수 없는 것을 게이트로 만들려 하지 말고, 판정할 수 없다는 사실을 사용자에게 정확히 말한다.**
   `✓` 는 보증이다. 보증할 수 없으면 찍지 않는 것이 가장 싼 수정이다.
 
-→ GUARDRAILS.md 에 승격.
+→ [GUARDRAILS.md](GUARDRAILS.md) 에 승격.
 
 ## 특이사항 — 번호 붙은 문서는 끝에 붙인다
 

@@ -1,11 +1,3 @@
----
-date: 2026-08-01
-track: knowledge
-category: best-practices
-title: 설계 문서의 "현재 상태"와 "이미 강제됨" 주장은 코드로 대조한 뒤에 계획한다
-tags: [spec, baseline, deep-interview, gitignore, omc, namespace, scope]
----
-
 # 설계 문서의 "현재 상태"와 "이미 강제됨" 주장은 코드로 대조한 뒤에 계획한다
 
 - 날짜: 2026-08-01
@@ -98,4 +90,4 @@ OMC 가 `.omc/.gitignore` 에 `wiki/` 를 써서 자기 wiki 를 스스로 무�
 관련: [probe-constraints-before-planning.md](probe-constraints-before-planning.md) (실측이 계획을
 바꾼다 — 이번엔 V-1 실증이 컴포넌트 하나를 통째로 없앴다), [ci-check-coverage.md](ci-check-coverage.md)
 (일부러 깨뜨려 확인한다 — 이번에도 compound 게이트를 차단·통과·`--force` 세 경로로 실증),
-[pipeline.md](pipeline.md)
+[ARCHITECTURE.md](../ARCHITECTURE.md)

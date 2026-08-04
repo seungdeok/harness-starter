@@ -1,11 +1,3 @@
----
-date: 2026-08-01
-track: knowledge
-category: workflow-issues
-title: OMC wiki 페이지를 손으로 고치면 파생 필드가 어긋난다 — links frontmatter 와 ASCII 슬러그
-tags: [omc, wiki, frontmatter, slug, lint, tooling]
----
-
 # OMC wiki 페이지를 손으로 고치면 파생 필드가 어긋난다 — links frontmatter 와 ASCII 슬러그
 
 - 날짜: 2026-08-01
@@ -106,7 +98,7 @@ for p in sorted(pathlib.Path('.').glob('*.md')):
 - **슬러그·ID 를 예측해서 참조를 미리 만들지 않는다.** 생성 → 실제 이름 확인 → 참조 연결
   순서로 간다. 도구마다 슬러그 규칙이 다르고(같은 레포 안에서도), 비-ASCII 처리는 특히 갈린다.
 
-→ GUARDRAILS.md 에 승격.
+→ [GUARDRAILS.md](GUARDRAILS.md) 에 승격.
 
 ## 부수 사항 — `index.md` 는 무시 대상 페이지도 링크한다
 
@@ -139,4 +131,4 @@ ADR-011 로 `.omc/` 를 전부 무시하고 지식 저장소를 `docs/` 로 단�
 **여기서 배운 절차적 교훈 하나**: 스킬(`/wiki`)이 시키는 대로 따르기 전에 **그 경로에 대해
 레포가 이미 내린 결정이 있는지** 본다. 스킬의 기본 동작은 레포 사정을 모른다.
 
-→ GUARDRAILS.md 에 승격.
+→ [GUARDRAILS.md](GUARDRAILS.md) 에 승격.

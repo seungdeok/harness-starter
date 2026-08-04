@@ -1,11 +1,3 @@
----
-date: 2026-08-01
-track: knowledge
-category: workflow-issues
-title: worktree phase 의 pipeline.py 명령은 매번 cd 를 붙인다 — cwd 가 곧 어느 phase 인지다
-tags: [harness, pipeline, worktree, cwd, phase]
----
-
 # worktree phase 의 pipeline.py 명령은 매번 cd 를 붙인다 — cwd 가 곧 어느 phase 인지다
 
 - 날짜: 2026-08-01
