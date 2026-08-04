@@ -4,6 +4,11 @@
 
 `plugin.json` 에 `version` 이 없어 **커밋 SHA 가 곧 버전**이에요(ADR-002). 그래서 버전 번호 대신 날짜로 묶고, 항목마다 이슈/PR 번호를 달아요.
 
+## 2026-08-04
+
+- `/harness:setup` 의 사전 스캔에서 `.gitignore` 의 `phases/` 잔재 행을 뺐어요. 스캔이 유일하게 남의 파일을 지우자고 제안하는 행이었어요 — 잔재가 남아 있으면 직접 지워요 (ADR-005 이후 불필요한 줄이에요).
+- 대상 레포에 복사되는 `<docs>/solutions/README.md` 에 **ADR·해결 노트·GUARDRAILS 가 각각 무엇을 담고 어떻게 서로 링크하는지** 표와 규칙이 생겼어요. `/ce-compound` 가 붙이는 frontmatter 를 지우면 안 되는 이유도 함께 적었어요.
+
 ## 2026-08-02
 
 - `/harness:setup` 이 파일을 건드리기 전에 대상 전체를 훑어 `없음/동일/다름/판정불가` 를 보여주고, 확인을 **한 번만** 받아요. 끝나면 `생성/갱신/스킵` 을 파일 단위로 사유와 함께 요약해요 — 바뀐 게 없어도 출력해요. 구본이 넣은 `.gitignore` 의 `phases/` 줄도 확인 후 지울 수 있어요. ([#34](https://github.com/seungdeok/harness-starter/issues/34))

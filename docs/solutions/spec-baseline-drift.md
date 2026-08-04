@@ -98,4 +98,4 @@ OMC 가 `.omc/.gitignore` 에 `wiki/` 를 써서 자기 wiki 를 스스로 무�
 관련: [probe-constraints-before-planning.md](probe-constraints-before-planning.md) (실측이 계획을
 바꾼다 — 이번엔 V-1 실증이 컴포넌트 하나를 통째로 없앴다), [ci-check-coverage.md](ci-check-coverage.md)
 (일부러 깨뜨려 확인한다 — 이번에도 compound 게이트를 차단·통과·`--force` 세 경로로 실증),
-[pipeline.md](pipeline.md)
+[ARCHITECTURE.md](../ARCHITECTURE.md)

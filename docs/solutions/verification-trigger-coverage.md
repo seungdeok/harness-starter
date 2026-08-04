@@ -86,7 +86,7 @@ grep -rn "ensureWikiDir" src/   # 호출자를 눈으로 확인
 - 이 규칙은 "게이트가 실제로 막는지 본다"([ci-check-coverage.md](ci-check-coverage.md))의
   **앞 단계**다. 게이트를 의심하기 전에 게이트가 호출되기는 하는지를 먼저 의심한다.
 
-→ GUARDRAILS.md 에 승격.
+→ [GUARDRAILS.md](GUARDRAILS.md) 에 승격.
 
 ## 부수 확인 — 상류 의존은 버전을 명시해 둔다
 
@@ -130,4 +130,4 @@ git diff --name-status "$b" main | awk '$1=="D"{print $2}'   # 브랜치에만 �
 기존 GUARDRAILS 의 zsh 규칙은 **glob nomatch** 한정이라 이 케이스를 덮지 못했다.
 zsh 에서 명령이 조용히 무력화되는 경로가 최소 둘이라는 뜻이다.
 
-→ GUARDRAILS.md 에 승격.
+→ [GUARDRAILS.md](GUARDRAILS.md) 에 승격.

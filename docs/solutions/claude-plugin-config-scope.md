@@ -8,6 +8,9 @@ tags: [claude-code, plugin, settings, compound-engineering]
 
 # Claude Code 플러그인 설정은 공유 settings.json에 넣지 않기
 
+- 날짜: 2026-07-05
+- 작업/PR: (기록 없음 — compound 도입 전)
+
 ## 문제
 
 프로젝트의 `.claude/settings.json`(= git에 커밋되어 팀원과 공유되는 설정)에 compound-engineering 플러그인의 `enabledPlugins`와 `extraKnownMarketplaces`를 넣었더니, 해당 플러그인 설정이 **에러로 무시**됐다.

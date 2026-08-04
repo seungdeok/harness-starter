@@ -76,7 +76,7 @@ gh label list --limit 100 | cut -f1
 2. **glob 을 조건부 조회에 쓰지 않는다.** 매칭이 없을 수 있는 자리에는 `ls *.ext` 대신 `find <dir> -name '*.ext'` 를 쓴다. zsh 에서 nomatch 는 `2>/dev/null` 로 못 막는다.
 3. **CLI 플래그는 `--help` 로 설치된 버전에 있는지 확인한다.** 공식 문서에 있어도 사용자 환경의 구버전에는 없을 수 있다. 스킬은 남의 환경에서 도는 코드다.
 
-→ GUARDRAILS.md 에 승격.
+→ [GUARDRAILS.md](GUARDRAILS.md) 에 승격.
 
 ## 부수 교훈 — "X 형식에 맞춰"라는 서술은 X 를 읽는 단계와 대조한다
 

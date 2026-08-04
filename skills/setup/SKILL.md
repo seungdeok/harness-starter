@@ -48,7 +48,6 @@ scope 에 해당하는 행만 보여줘요.
 | `.claude/settings.local.json` 의 `env.HARNESS_*` | 공통 | 파일의 `env` 값 vs 이번 답변 | 없음/동일/다름 |
 | `.gitignore` 의 `.claude/worktrees/` | 공통 | `grep -qxF` (줄 단위) | 없음/동일 |
 | `.gitignore` 의 `.claude/settings.local.json` | 공통 | `grep -qxF` (줄 단위) | 없음/동일 |
-| `.gitignore` 의 `phases/` 잔재 | 공통 | `grep -qxF 'phases/'` | 없음/다름 |
 | `scripts/pipeline.py` | 프로젝트 | 헤더 SHA vs 번들 SHA (§4-1) | 없음/동일/다름/판정불가 |
 | `<docs>/` 템플릿 5종 | 프로젝트 (글로벌은 원할 때만) | 파일 존재 여부만 | 없음/있음 |
 | `CLAUDE.md` 마커 블록 | §1 에서 추가하기로 했을 때 | `<!-- harness:start -->` 존재 여부 | 없음/다름 |
@@ -81,7 +80,6 @@ scope 에 해당하는 행만 보여줘요.
 - `전부 갱신` / `골라서 갱신` / `전부 유지`
 - `scripts/pipeline.py` 가 `다름` 이면서 그 파일에 **uncommitted 수정이 있으면**, 프롬프트에
   "로컬 수정이 있습니다 — 덮어쓰면 사라집니다"를 함께 띄워요.
-- `.gitignore` 의 `phases/` 잔재는 "ADR-005 이후 불필요한 줄이에요" 근거를 함께 보여주고 **기본값은 `유지`** 예요.
 
 `다름` 이 0개면 확인 프롬프트를 **띄우지 않아요.**
 
@@ -95,7 +93,6 @@ scope 에 해당하는 행만 보여줘요.
 
 ```bash
 test -f .gitignore && grep -qxF '.claude/worktrees/' .gitignore && echo 동일 || echo 없음
-test -f .gitignore && grep -qxF 'phases/' .gitignore && echo 다름 || echo 없음
 test -f <docs>/PRD.md && echo 있음 || echo 없음
 test -f CLAUDE.md && grep -qF '<!-- harness:start -->' CLAUDE.md && echo 다름 || echo 없음
 ```
@@ -127,8 +124,8 @@ env 변수)는 그대로 두고 `HARNESS_*` 만 추가/갱신해요. 덮어쓰�
 ```
 
 `phases/` 는 넣지 않아요. phase 산출물은 커밋 대상이 아니지만 무시 규칙도 두지 않고 규범으로 다뤄요
-(CLAUDE.md 참고). **구본 setup 이 넣은 `phases/` 줄이 있으면** §2 가 `다름` 으로 잡아요 — 갱신을 고른
-경우에만 그 줄을 지우고, 기본값인 `유지` 면 그대로 둬요.
+(CLAUDE.md 참고). 기존 줄은 어떤 것도 지우지 않아요 — 구본 setup 이 넣은 `phases/` 줄이 남아 있다면
+사용자가 직접 지워요 (ADR-005, ADR-013 후속).
 
 ## 4. scope 별 scaffold
 

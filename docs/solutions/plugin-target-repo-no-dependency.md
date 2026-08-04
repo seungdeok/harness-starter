@@ -47,7 +47,7 @@ lefthook 안이 처음 나왔을 때 "harness 는 임의의 대상 레포에 설
 
 이 프로젝트에 한정한 형태: **harness 가 대상 레포에 뿌리는 것(gitignore 줄, 훅, 스크립트, CI)은 대상 레포에 런타임 의존을 만들지 않아야 한다.** 대상 레포의 언어·툴체인을 모르는 게 기본값이다.
 
-→ GUARDRAILS.md 에 승격.
+→ [GUARDRAILS.md](GUARDRAILS.md) 에 승격.
 
 ## 부수 교훈 — 미러 파일은 계획에 안 잡히면 verify 에서 잡아야 한다
 
@@ -57,4 +57,4 @@ gitignore 줄을 뺀 뒤 §6 규범을 CLAUDE.md 에만 넣었다면, **대상 �
 
 verify stage 에서 grep 으로 잡아 보완했고, 두 §6 이 `diff` 로 동일한지 확인했다. 계획에 없던 파일이라 "계획대로 했는지" 만 봤으면 통과했을 것이다 — **verify 는 계획 이행이 아니라 수용 기준 충족을 봐야 한다**는 게 확인됐다.
 
-→ GUARDRAILS.md 에 승격.
+→ [GUARDRAILS.md](GUARDRAILS.md) 에 승격.
