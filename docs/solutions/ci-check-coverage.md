@@ -1,3 +1,11 @@
+---
+date: 2026-08-01
+track: knowledge
+category: best-practices
+title: CI 체크는 "통과하는지"가 아니라 "무엇을 덮는지"로 검증한다
+tags: [ci, github-actions, claude-plugin, validation, harness]
+---
+
 # CI 체크는 "통과하는지"가 아니라 "무엇을 덮는지"로 검증한다
 
 - 날짜: 2026-08-01

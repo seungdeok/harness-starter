@@ -7,7 +7,7 @@
 ## 2026-08-04
 
 - `/harness:setup` 의 사전 스캔에서 `.gitignore` 의 `phases/` 잔재 행을 뺐어요. 스캔이 유일하게 남의 파일을 지우자고 제안하는 행이었어요 — 잔재가 남아 있으면 직접 지워요 (ADR-005 이후 불필요한 줄이에요).
-- 대상 레포에 복사되는 `<docs>/solutions/README.md` 에 **ADR·해결 노트·GUARDRAILS 가 각각 무엇을 담고 어떻게 서로 링크하는지** 표와 규칙이 생겼어요. 해결 노트에 frontmatter 는 쓰지 않아요.
+- 대상 레포에 복사되는 `<docs>/solutions/README.md` 에 **ADR·해결 노트·GUARDRAILS 가 각각 무엇을 담고 어떻게 서로 링크하는지** 표와 규칙이 생겼어요. `/ce-compound` 가 붙이는 frontmatter 를 지우면 안 되는 이유도 함께 적었어요.
 
 ## 2026-08-02
 

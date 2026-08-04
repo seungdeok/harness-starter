@@ -1,3 +1,11 @@
+---
+date: 2026-07-05
+track: knowledge
+category: conventions
+title: Claude Code 플러그인 설정은 공유 settings.json에 넣지 않기
+tags: [claude-code, plugin, settings, compound-engineering]
+---
+
 # Claude Code 플러그인 설정은 공유 settings.json에 넣지 않기
 
 - 날짜: 2026-07-05

@@ -1,3 +1,11 @@
+---
+date: 2026-08-01
+track: knowledge
+category: best-practices
+title: 검증은 게이트보다 트리거를 먼저 의심한다 — 대상 코드가 안 돌면 정방향은 조건과 무관하게 통과한다
+tags: [verification, gitignore, omc, wiki, negative-test, harness]
+---
+
 # 검증은 게이트보다 트리거를 먼저 의심한다 — 대상 코드가 안 돌면 정방향은 조건과 무관하게 통과한다
 
 - 날짜: 2026-08-01

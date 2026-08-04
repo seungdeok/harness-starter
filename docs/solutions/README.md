@@ -87,7 +87,10 @@ Claude Code를 재시작하면 `/ce-brainstorm`, `/ce-plan`, `/ce-code-review`, 
 → 규칙으로 일반화되면 GUARDRAILS.md에 한 줄로 승격.
 ```
 
-frontmatter(`---` 블록)는 쓰지 않아요 — 읽는 도구가 없어서 본문과 조용히 갈라져요.
+본문 위에는 `/ce-compound` 가 YAML frontmatter(`date`·`track`·`category`·`title`·`tags`)를 붙여요.
+**지우지 마세요** — ce-compound 가 다음 노트를 쓸 때 `tags:` 를 Grep 해서 "이미 있는 노트를
+갱신할지 새로 만들지"를 판단해요. 지우면 같은 주제의 노트가 중복으로 쌓여요.
+필드 계약은 스킬 번들의 `references/schema.yaml` 이 갖고 있어요.
 
 ## 사용법
 

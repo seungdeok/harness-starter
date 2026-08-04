@@ -1,3 +1,11 @@
+---
+date: 2026-08-01
+track: knowledge
+category: best-practices
+title: 외부 도구의 제약은 계획 전에 실측하고, 그 probe 는 디렉토리 단위로 지우지 않는다
+tags: [git-worktree, pipeline, plan, verify, probe, cleanup]
+---
+
 # 외부 도구의 제약은 계획 전에 실측하고, 그 probe 는 디렉토리 단위로 지우지 않는다
 
 - 날짜: 2026-08-01

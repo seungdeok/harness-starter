@@ -1,3 +1,11 @@
+---
+date: 2026-08-01
+track: knowledge
+category: workflow-issues
+title: OMC wiki 페이지를 손으로 고치면 파생 필드가 어긋난다 — links frontmatter 와 ASCII 슬러그
+tags: [omc, wiki, frontmatter, slug, lint, tooling]
+---
+
 # OMC wiki 페이지를 손으로 고치면 파생 필드가 어긋난다 — links frontmatter 와 ASCII 슬러그
 
 - 날짜: 2026-08-01

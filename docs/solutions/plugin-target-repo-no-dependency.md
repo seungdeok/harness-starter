@@ -1,3 +1,11 @@
+---
+date: 2026-08-01
+track: knowledge
+category: architecture-patterns
+title: 플러그인이 대상 레포에 뿌리는 해법은 런타임 의존을 만들지 않는 쪽으로 고른다
+tags: [claude-plugin, harness, gitignore, lefthook, scope, setup]
+---
+
 # 플러그인이 대상 레포에 뿌리는 해법은 런타임 의존을 만들지 않는 쪽으로 고른다
 
 - 날짜: 2026-08-01

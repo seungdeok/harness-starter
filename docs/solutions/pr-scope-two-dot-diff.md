@@ -1,3 +1,11 @@
+---
+date: 2026-08-01
+track: knowledge
+category: workflow-issues
+title: "PR 범위는 origin 기준 three-dot 으로 본다 — 긴 세션에서 두 tip 비교는 남의 커밋을 내 diff 로 보여준다"
+tags: [git, worktree, pipeline, make-pr, merge-base, conflict]
+---
+
 # PR 범위는 origin 기준 three-dot 으로 본다 — 긴 세션에서 두 tip 비교는 남의 커밋을 내 diff 로 보여준다
 
 - 날짜: 2026-08-01

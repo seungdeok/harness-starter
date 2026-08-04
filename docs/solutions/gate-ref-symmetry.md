@@ -1,3 +1,11 @@
+---
+date: 2026-08-02
+track: knowledge
+category: best-practices
+title: 게이트는 "무엇을 봤는가"가 아니라 "무엇을 보증하는가"로 읽는다 — 비교식 양변의 ref 종류
+tags: [git, gate, verification, pipeline, compound, harness, pure-function]
+---
+
 # 게이트는 "무엇을 봤는가"가 아니라 "무엇을 보증하는가"로 읽는다 — 비교식 양변의 ref 종류
 
 - 날짜: 2026-08-02

@@ -1,3 +1,11 @@
+---
+date: 2026-08-01
+track: knowledge
+category: best-practices
+title: 설계 문서의 "현재 상태"와 "이미 강제됨" 주장은 코드로 대조한 뒤에 계획한다
+tags: [spec, baseline, deep-interview, gitignore, omc, namespace, scope]
+---
+
 # 설계 문서의 "현재 상태"와 "이미 강제됨" 주장은 코드로 대조한 뒤에 계획한다
 
 - 날짜: 2026-08-01

@@ -1,3 +1,11 @@
+---
+date: 2026-08-01
+track: knowledge
+category: best-practices
+title: 스킬 문서에 적은 셸 명령은 검증되지 않은 코드다 — 두 상태로 실행해 본다
+tags: [skill, prompt, shell, zsh, gh-cli, verification, harness]
+---
+
 # 스킬 문서에 적은 셸 명령은 검증되지 않은 코드다 — 두 상태로 실행해 본다
 
 - 날짜: 2026-08-01
