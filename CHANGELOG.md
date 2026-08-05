@@ -4,6 +4,13 @@
 
 `plugin.json` 에 `version` 이 없어 **커밋 SHA 가 곧 버전**이에요(ADR-002). 그래서 버전 번호 대신 날짜로 묶고, 항목마다 이슈/PR 번호를 달아요.
 
+## 2026-08-05
+
+- `/harness:setup` 이 `CLAUDE.md` 를 **두 조각으로 나눠** 넣어요 — 행동 가이드라인(A)과 `## Project Docs` @import 블록(B). `A 는 글로벌 · B 는 프로젝트` 를 고르면 여러 레포에서 가이드라인을 공유하면서 문서 참조만 레포별로 둘 수 있어요. 마커도 `harness:guidelines`/`harness:docs` 두 쌍으로 나뉘어요. **구본 `harness:start` 블록은 그대로 동작하고, 갱신을 고를 때만 교체돼요.** ([#38](https://github.com/seungdeok/harness-starter/issues/38))
+- `<docs>/TESTING.md` 템플릿이 생겼어요 — 빈 헤딩이 아니라 "어떤 명령으로 돌리나 / 무엇을 안 테스트하나 / 검증을 어떻게 남기나" 질문에 답하는 형식이에요. `@import` 목록에도 들어가서 verify 할 때 자동으로 로드돼요. ([#38](https://github.com/seungdeok/harness-starter/issues/38))
+- `@import` 가 가리키는 경로가 **실제로 있는지 확인**해요. docs 경로를 오타로 답하면 전에는 조용히 아무것도 안 가리켰는데, 이제 종료 안내에 경고가 떠요. ([#38](https://github.com/seungdeok/harness-starter/issues/38))
+- 가이드라인을 글로벌에 넣으면 **되돌리는 방법**을 알려줘요. `~/.claude/CLAUDE.md` 는 레포 밖이라 `git revert` 가 안 통해요. ([#38](https://github.com/seungdeok/harness-starter/issues/38))
+
 ## 2026-08-04
 
 - `/harness:setup` 의 사전 스캔에서 `.gitignore` 의 `phases/` 잔재 행을 뺐어요. 스캔이 유일하게 남의 파일을 지우자고 제안하는 행이었어요 — 잔재가 남아 있으면 직접 지워요 (ADR-005 이후 불필요한 줄이에요).

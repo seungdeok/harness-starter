@@ -11,7 +11,7 @@ compound 단계에서 새 규칙이 생기면 여기에 추가하고, 다음 작
 - [2026-08-01] `gh issue view`/`gh pr edit` 가 Projects classic GraphQL 에러를 내면 `gh api` 로 우회한다. (근거: [ci-check-coverage.md](ci-check-coverage.md))
 - [2026-08-01] harness 가 대상 레포에 뿌리는 것(gitignore 줄·훅·스크립트·CI)은 대상 레포에 런타임 의존을 만들지 않는다 — 대상의 언어·툴체인을 모르는 게 기본값이다. (근거: [plugin-target-repo-no-dependency.md](plugin-target-repo-no-dependency.md))
 - [2026-08-01] 근거를 대서 배제한 안을 다시 선택지에 올릴 때는 그 근거가 선호 문제인지 제약인지 구분한다 — 제약이면 옵션에서 뺀다. 단점을 설명에 적어두는 건 제약을 선호로 격하시키는 것이다. (근거: [plugin-target-repo-no-dependency.md](plugin-target-repo-no-dependency.md))
-- [2026-08-01] 루트 `CLAUDE.md` 를 고치면 `skills/setup/templates/CLAUDE-section.md` 미러도 같이 고친다 — 대상 레포에만 규범이 빠지면 원래 버그보다 나쁘다. (근거: [plugin-target-repo-no-dependency.md](plugin-target-repo-no-dependency.md))
+- [2026-08-01] 루트 `CLAUDE.md` 를 고치면 `skills/setup/templates/` 의 미러도 같이 고친다 — 가이드라인 본문은 `CLAUDE-guidelines.md`, `## Project Docs` 는 `CLAUDE-docs.md` 로 나뉘어 있으니 해당하는 쪽을 고른다. 대상 레포에만 규범이 빠지면 원래 버그보다 나쁘다. (근거: [plugin-target-repo-no-dependency.md](plugin-target-repo-no-dependency.md))
 - [2026-08-01] 스킬·문서에 써 넣는 셸 명령은 "결과 있음"과 "결과 없음" 두 상태로 실제 실행해 본다 — 결함은 대개 없음 쪽에 숨어 있다. (근거: [skill-prose-commands.md](skill-prose-commands.md))
 - [2026-08-01] 매칭이 없을 수 있는 조회에는 `ls *.ext` 대신 `find <dir> -name '*.ext'` 를 쓴다 — zsh 의 glob nomatch 에러는 `2>/dev/null` 로 안 막힌다. (근거: [skill-prose-commands.md](skill-prose-commands.md))
 - [2026-08-01] CLI 플래그는 `--help` 로 설치된 버전에 실제 있는지 확인한다 — 공식 문서에 있어도 구버전엔 없다. (근거: [skill-prose-commands.md](skill-prose-commands.md))

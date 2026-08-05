@@ -29,10 +29,17 @@ plugin 은 설치 시점에 스크립트를 못 돌리므로, 이 스킬이 프�
    - `글로벌` (기본): pipeline.py 는 plugin 번들(글로벌 캐시)을 그대로 사용. 프로젝트에는 phase 파일(`phases/`)만 생겨서 worktree 와 함께 움직여요. 프로젝트에 복사되는 코드 없음.
    - `프로젝트`: `pipeline.py`·docs 템플릿·CLAUDE.md 섹션을 모두 프로젝트 내부에 복사/생성. 사내 레포처럼 모든 것을 레포 안에 커밋해야 할 때.
 2. **docs 경로** — PRD/ADR/ARCHITECTURE 와 solutions(교훈 노트)를 둘 경로. 기본 `docs`. 사용자가 자유 입력으로 바꿀 수 있어요 (예: `documents`, `docs/harness`).
-3. **CLAUDE.md 처리** — 행동 가이드라인(1~5장) 섹션을 어디에 추가할지
-   - `프로젝트 CLAUDE.md 에 append` (기본)
-   - `글로벌 ~/.claude/CLAUDE.md 에 append`
+3. **CLAUDE.md 처리** — 두 조각을 어디에 둘지 (조각은 §5 참고)
+   - **A** = 행동 가이드라인(1~6장) — 프로젝트와 무관한 내용이라 글로벌에 둬도 돼요
+   - **B** = `## Project Docs` (@import 블록) — 프로젝트 상대경로예요
+
+   선택지:
+   - `둘 다 프로젝트 CLAUDE.md 에` (기본)
+   - `A 는 글로벌(~/.claude/CLAUDE.md) · B 는 프로젝트` — 여러 레포에서 가이드라인을 공유할 때
    - `건너뛰기`
+
+   **B 를 글로벌에 두는 선택지는 없어요.** `@` 는 파일 위치 기준 상대경로라 글로벌에선 절대경로로만
+   가능한데, 그러면 **모든 프로젝트 세션에 특정 레포의 문서가 실려요.** 질문에 이 한 줄을 함께 보여줘요.
 
 ## 2. 사전 스캔 (쓰기 전 필수)
 
@@ -49,8 +56,9 @@ scope 에 해당하는 행만 보여줘요.
 | `.gitignore` 의 `.claude/worktrees/` | 공통 | `grep -qxF` (줄 단위) | 없음/동일 |
 | `.gitignore` 의 `.claude/settings.local.json` | 공통 | `grep -qxF` (줄 단위) | 없음/동일 |
 | `scripts/pipeline.py` | 프로젝트 | 헤더 SHA vs 번들 SHA (§4-1) | 없음/동일/다름/판정불가 |
-| `<docs>/` 템플릿 5종 | 프로젝트 (글로벌은 원할 때만) | 파일 존재 여부만 | 없음/있음 |
-| `CLAUDE.md` 마커 블록 | §1 에서 추가하기로 했을 때 | `<!-- harness:start -->` 존재 여부 | 없음/다름 |
+| `<docs>/` 템플릿 6종 | 프로젝트 (글로벌은 원할 때만) | 파일 존재 여부만 | 없음/있음 |
+| `harness:guidelines` 마커 (조각 A) | §1 에서 추가하기로 했을 때 | 프로젝트 `CLAUDE.md` 와 `~/.claude/CLAUDE.md` **둘 다** | 없음/다름 |
+| `harness:docs` 마커 (조각 B) | §1 에서 추가하기로 했을 때 | 프로젝트 `CLAUDE.md` 만 (B 는 글로벌 불가) | 없음/다름 |
 
 `.gitignore` 두 줄은 **블록이 아니라 줄마다 따로** 봐요. 한 줄만 있는 레포가 실제로 있어서, 블록으로 보면
 `없음`(둘 다 추가 → 중복)이나 `동일`(누락 방치) 어느 쪽으로도 틀려요.
@@ -68,10 +76,38 @@ scope 에 해당하는 행만 보여줘요.
 (= plugin 으로 설치한 게 아니면) 복사본이 낡았는지 **알 수 없어요.** 이때 `동일` 로 찍는 건 출처를 지어내는
 것과 같으니, `판정불가 (plugin 설치 아님 — 출처 확인 불가)` 로 적고 그대로 둬요.
 
-**`CLAUDE.md` 마커 행은 한 번 setup 을 돌린 레포에서 늘 `다름` 이에요.** 마커 존재 여부로만 판정하고
-블록 내용을 템플릿과 비교하지 않기 때문이에요(그렇게 정한 이유는 §5 에 있어요). 그래서 이 행은
+**마커 두 행은 한 번 setup 을 돌린 레포에서 늘 `다름` 이에요.** 마커 존재 여부로만 판정하고
+블록 내용을 템플릿과 비교하지 않기 때문이에요(그렇게 정한 이유는 §5 에 있어요). 그래서 두 행은
 **§6 의 "모두 최신" 판정에서 제외해요** — 안 그러면 다른 게 전부 그대로여도 "모두 최신"이 영영 안 나와요.
-확인 프롬프트에는 그대로 올라오니, 재실행마다 이 한 건을 확인하게 되는 건 의도된 비용이에요.
+확인 프롬프트에는 그대로 올라오니, 재실행마다 이 두 건을 확인하게 되는 건 의도된 비용이에요
+(조각을 나누기 전에는 1건이었어요 — ADR-014).
+
+**guidelines 는 §1 답변과 무관하게 두 파일을 모두 봐요.** 이번 답변이 "둘 다 프로젝트"여도
+`~/.claude/CLAUDE.md` 를 확인해요. 안 그러면 이런 게 조용히 통과해요:
+
+```
+1회차 "A 는 글로벌"     → ~/.claude/CLAUDE.md 에 설치
+2회차 "둘 다 프로젝트"  → 프로젝트만 보고 `없음` → 또 append → A 가 두 곳, 가이드라인 2중 로드
+```
+
+이번 답변과 **다른 위치**에 있으면 `다름 (다른 위치에 설치됨: <경로>)` 로 적고, 확인 프롬프트에서
+`옮기기 / 양쪽 유지 / 그대로` 를 고르게 해요.
+
+### 레거시 마커가 먼저예요
+
+구본 setup 은 조각을 나누지 않고 `<!-- harness:start -->` 한 쌍에 A+B 를 함께 넣었어요.
+**두 마커 행을 보기 전에** 대상 파일에 그 레거시 마커가 있는지 먼저 확인해요. 있으면 신규 행을
+`없음` 이 아니라 **`다름 (구본 통합 마커)`** 로 적어요 — `없음` 은 "묻지 않고 만들어요"라서,
+그대로 두면 레거시 블록 위에 새 블록이 덧붙어 **가이드라인이 두 번** 들어가요.
+
+레거시 블록의 내용은 **위치마다 달라요** (구본 §5 가 글로벌에선 `## Project Docs` 를 제외했어요):
+
+| 레거시 위치 | 담긴 것 | 신규 행 판정 |
+| --- | --- | --- |
+| 프로젝트 `CLAUDE.md` | A + B | guidelines·docs 둘 다 `다름 (구본 통합 마커)` |
+| `~/.claude/CLAUDE.md` | A 만 | guidelines 만 `다름`, docs 는 `없음` 이 맞아요 |
+
+글로벌 레거시 사용자에게 docs 까지 `다름` 으로 묶으면 B 를 영영 못 받아요.
 
 ### 확인은 한 번만
 
@@ -94,7 +130,15 @@ scope 에 해당하는 행만 보여줘요.
 ```bash
 test -f .gitignore && grep -qxF '.claude/worktrees/' .gitignore && echo 동일 || echo 없음
 test -f <docs>/PRD.md && echo 있음 || echo 없음
-test -f CLAUDE.md && grep -qF '<!-- harness:start -->' CLAUDE.md && echo 다름 || echo 없음
+
+# 레거시 통합 마커를 먼저 본다 (프로젝트·글로벌 각각)
+test -f CLAUDE.md && grep -qF '<!-- harness:start -->' CLAUDE.md && echo 레거시-프로젝트 || echo 없음
+test -f ~/.claude/CLAUDE.md && grep -qF '<!-- harness:start -->' ~/.claude/CLAUDE.md && echo 레거시-글로벌 || echo 없음
+
+# 레거시가 없는 파일에서만 신규 마커를 본다. guidelines 는 두 파일 모두
+test -f CLAUDE.md && grep -qF '<!-- harness:guidelines:start -->' CLAUDE.md && echo 다름-프로젝트 || echo 없음
+test -f ~/.claude/CLAUDE.md && grep -qF '<!-- harness:guidelines:start -->' ~/.claude/CLAUDE.md && echo 다름-글로벌 || echo 없음
+test -f CLAUDE.md && grep -qF '<!-- harness:docs:start -->' CLAUDE.md && echo 다름 || echo 없음
 ```
 
 ## 3. 설정 기록 (공통)
@@ -131,7 +175,7 @@ env 변수)는 그대로 두고 `HARNESS_*` 만 추가/갱신해요. 덮어쓰�
 
 templates 원본은 이 스킬 폴더의 `templates/` 에 있어요.
 **복사할 때 파일 안의 `{{DOCS_PATH}}` 를 답변한 docs 경로로 치환해요** (`GUARDRAILS.md`·`solutions-README.md`·
-`CLAUDE-section.md` 에 들어 있어요). 치환을 빠뜨리면 scaffold 가 없는 경로를 가리켜요.
+`CLAUDE-docs.md` 에 들어 있어요). 치환을 빠뜨리면 scaffold 가 없는 경로를 가리켜요 — §5 의 경로 확인이 잡아요.
 
 **프로젝트 scope:**
 
@@ -164,26 +208,58 @@ templates 원본은 이 스킬 폴더의 `templates/` 에 있어요.
      (덮어쓰기 전 로컬 수정 경고는 §2 의 확인 프롬프트가 이미 띄웠어요.)
    - `판정불가` → 번들 SHA 를 못 구한 경우예요. 그대로 두고 사유만 알려줘요.
 
-2. `<docsPath>/` 에 `templates/PRD.md`·`ADR.md`·`ARCHITECTURE.md` 복사, `<docsPath>/solutions/` 에 `templates/solutions-README.md`(→ `README.md`)·`templates/GUARDRAILS.md`(→ `GUARDRAILS.md`) 복사. **이미 있는 파일은 건너뛰고 뭘 건너뛰었는지 알려줘요. 내용은 비교하지 않아요** — 사용자가 채우는 문서라 재실행 시 항상 템플릿과 다르고, diff 는 노이즈일 뿐이에요.
+2. `<docsPath>/` 에 `templates/PRD.md`·`ADR.md`·`ARCHITECTURE.md`·`TESTING.md` 복사, `<docsPath>/solutions/` 에 `templates/solutions-README.md`(→ `README.md`)·`templates/GUARDRAILS.md`(→ `GUARDRAILS.md`) 복사 — **총 6종**. **이미 있는 파일은 건너뛰고 뭘 건너뛰었는지 알려줘요. 내용은 비교하지 않아요** — 사용자가 채우는 문서라 재실행 시 항상 템플릿과 다르고, diff 는 노이즈일 뿐이에요.
 
 **글로벌 scope:** 복사·scaffold 없음. docs 템플릿이 필요하면 원하는지 한 번 물어보고, 원할 때만 위 2번을 수행해요.
 
 ## 5. CLAUDE.md append (덮어쓰기 금지)
 
-`templates/CLAUDE-section.md` 의 `{{DOCS_PATH}}` 를 답변한 docs 경로로 치환한 뒤, 마커로 감싸 **파일 끝에 append** 해요:
+템플릿이 **두 조각**이에요. `{{DOCS_PATH}}` 를 답변한 docs 경로로 치환한 뒤, 각자의 마커로 감싸
+**파일 끝에 append** 해요:
+
+| 조각 | 템플릿 | 마커 | 갈 수 있는 곳 |
+| --- | --- | --- | --- |
+| **A** 행동 가이드라인 | `templates/CLAUDE-guidelines.md` | `harness:guidelines` | 프로젝트 `CLAUDE.md` 또는 `~/.claude/CLAUDE.md` |
+| **B** Project Docs | `templates/CLAUDE-docs.md` | `harness:docs` | 프로젝트 `CLAUDE.md` **만** |
 
 ```markdown
-<!-- harness:start -->
-…치환된 템플릿 내용…
-<!-- harness:end -->
+<!-- harness:guidelines:start -->
+…치환된 A…
+<!-- harness:guidelines:end -->
+
+<!-- harness:docs:start -->
+…치환된 B…
+<!-- harness:docs:end -->
 ```
 
+§1 에서 고른 조합대로 배치해요. `건너뛰기` 면 둘 다 안 해요.
+
 - 대상 파일이 없으면 새로 만들어요. 있으면 **기존 내용은 그대로 두고 뒤에 추가**해요.
-- append 전에 추가될 내용을 사용자에게 보여주고 확인받아요. (이건 §2 의 `없음` — 신규 생성 경로라 스캔의 갱신 대상이 아니에요.)
-- 이미 `<!-- harness:start -->` 마커가 있으면 §2 가 `다름` 으로 잡아요. append 하지 않고, §2 에서 갱신을
-  골랐으면 마커 사이 내용을 갱신하고 유지를 골랐으면 그대로 둬요. **여기서 다시 묻지 않아요.**
+- append 전에 추가될 내용을 사용자에게 보여주고 확인받아요. (이건 §2 의 `없음` — 신규 생성 경로라
+  스캔의 갱신 대상이 아니에요.)
+- 이미 마커가 있으면 §2 가 `다름` 으로 잡아요. append 하지 않고, §2 에서 갱신을 골랐으면 마커 사이
+  내용을 갱신하고 유지를 골랐으면 그대로 둬요. **여기서 다시 묻지 않아요.**
   (판정은 마커 존재 여부로만 해요 — 블록 내용을 템플릿과 비교하지는 않아요.)
-- **글로벌 `~/.claude/CLAUDE.md` 에 append 하는 경우 `## Project Docs` @import 블록은 제외**해요 (프로젝트 상대 경로라 글로벌에선 깨져요).
+- **레거시 `<!-- harness:start -->` 블록**(구본의 A+B 통합본)이 있으면 §2 가 `다름 (구본 통합 마커)`
+  로 잡아요. **유지**면 그대로 둬요 — 통합본이라 그대로 동작해요. **갱신**을 골랐을 때만 그 블록을
+  두 쌍으로 교체하고, 내용이 유실되지 않게 A/B 를 모두 채워 넣어요.
+- **guidelines 가 이번 답변과 다른 위치에 있으면** §2 가 `다름 (다른 위치에 설치됨)` 으로 잡아요.
+  거기서 받은 결정대로 `옮기기`(기존 위치에서 지우고 새 위치에 append) / `양쪽 유지` / `그대로` 를
+  적용하고, 여기서 다시 묻지 않아요.
+
+### append 뒤 @import 경로를 확인해요
+
+B 를 넣었으면 그 6개 경로가 실제로 있는지 봐요. 없으면 `@` 가 **조용히 아무것도 안 가리켜요** —
+docs 경로를 오타로 답했거나 치환이 빠진 경우예요.
+
+```bash
+for f in PRD.md ADR.md ARCHITECTURE.md TESTING.md solutions/README.md solutions/GUARDRAILS.md; do
+  test -f "<docs>/$f" || echo "없는 경로: <docs>/$f"
+done
+```
+
+하나라도 나오면 §6 종료 안내에 **경고**로 찍고, docs 경로를 다시 확인하라고 알려줘요.
+파일을 임의로 만들지는 않아요 (§4 가 만들 것은 이미 만들었어요).
 
 ## 6. 종료 안내 (반드시 출력)
 
@@ -193,28 +269,42 @@ templates 원본은 이 스킬 폴더의 `templates/` 에 있어요.
 
 ```
 생성  <docs>/solutions/GUARDRAILS.md
+생성  CLAUDE.md                  (harness:docs 조각)
+생성  ~/.claude/CLAUDE.md        (harness:guidelines 조각)
 갱신  scripts/pipeline.py        (a1b2c3d4e5f6 → 2f4cb5449686)
-스킵  CLAUDE.md                  (마커 있음 — 사용자가 유지 선택)
+스킵  CLAUDE.md                  (harness:docs 마커 있음 — 사용자가 유지 선택)
 스킵  .gitignore                 (두 줄 모두 이미 있음)
 스킵  <docs>/PRD.md              (이미 존재 — 사용자 문서, 내용 비교 안 함)
 보류  scripts/pipeline.py        (판정불가 — plugin 설치 아님)
+경고  <docs>/TESTING.md          (@import 가 가리키는데 파일이 없어요 — docs 경로를 확인하세요)
 ```
 
 - `갱신` 은 무엇 → 무엇인지(SHA 등)를 적어요.
 - `스킵` 은 **사유**를 적어요.
 - **바뀐 게 하나도 없어도 이 블록을 출력하고 "모두 최신이에요" 라고 명시해요.** 아무 말도 안 하는 건
   "안 돌았음"과 구분이 안 돼요.
-- **"모두 최신" 판정에서는 `CLAUDE.md` 마커 행을 빼고 봐요.** 그 행은 내용을 비교하지 않아 setup 을 한 번
-  돌린 레포에서 늘 `다름` 이라(§2), 포함시키면 이 문구가 영영 못 나와요. 대신 아래처럼 한 줄로 따로 적어요:
+- **"모두 최신" 판정에서는 마커 두 행을 빼고 봐요.** 그 행들은 내용을 비교하지 않아 setup 을 한 번
+  돌린 레포에서 늘 `다름` 이라(§2), 포함시키면 이 문구가 영영 못 나와요. 대신 아래처럼 따로 적어요:
 
 ```
 나머지 모두 최신이에요 — 생성 0건 / 갱신 0건
 스킵  .claude/settings.local.json  (HARNESS_* 값 동일)
 스킵  .gitignore                   (두 줄 모두 이미 있음)
 스킵  scripts/pipeline.py          (헤더 SHA = 번들 SHA)
-스킵  <docs>/PRD.md 외 4건         (이미 존재 — 사용자 문서, 내용 비교 안 함)
-확인  CLAUDE.md                    (마커 있음 — 내용을 비교하지 않아 매번 확인해요)
+스킵  <docs>/PRD.md 외 5건         (이미 존재 — 사용자 문서, 내용 비교 안 함)
+확인  CLAUDE.md                    (harness:docs 마커 있음 — 내용을 비교하지 않아 매번 확인해요)
+확인  ~/.claude/CLAUDE.md          (harness:guidelines 마커 있음 — 같은 이유)
 ```
+
+### 글로벌에 넣었으면 (해당할 때만)
+
+A(가이드라인)를 `~/.claude/CLAUDE.md` 에 넣었으면 **모든 프로젝트**에 적용돼요. 그 파일은 레포 밖이라
+`git revert` 로 못 되돌리니 제거 방법을 함께 알려줘요:
+
+> 되돌리려면 `~/.claude/CLAUDE.md` 에서 `<!-- harness:guidelines:start -->` 부터
+> `<!-- harness:guidelines:end -->` 까지를 지우세요.
+
+프로젝트에만 넣었으면 이 안내는 출력하지 않아요.
 
 ### 이어서 알아둘 것
 
