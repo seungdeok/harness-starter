@@ -112,4 +112,6 @@ project scope 가 거부된다(ADR-008, ADR-010). `claude plugin validate` 가 �
 @docs/PRD.md
 @docs/ADR.md
 @docs/ARCHITECTURE.md
+@docs/TESTING.md
+@docs/solutions/README.md
 @docs/solutions/GUARDRAILS.md
