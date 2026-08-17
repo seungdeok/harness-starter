@@ -4,6 +4,11 @@
 
 `plugin.json` 에 `version` 이 없어 **커밋 SHA 가 곧 버전**이에요(ADR-002). 그래서 버전 번호 대신 날짜로 묶고, 항목마다 이슈/PR 번호를 달아요.
 
+## 2026-08-17
+
+- `/harness:pipeline` 의 `init` 이 만드는 worktree 위치가 **레포 형제 디렉토리**(`../<repo>-worktrees/<slug>`)로 바뀌었어요. `.claude` 가 숨김이라 파일트리에서 안 보이던 문제예요. 위치는 `--worktree-dir <부모경로>` 로 고를 수 있고, **예전 그대로 쓰려면 `--worktree-dir .claude/worktrees`** 예요. ([#40](https://github.com/seungdeok/harness-starter/issues/40))
+- **`pipeline.py done` 이 더 이상 직접 지우지 않아요** — 정리해도 되는지 확인한 뒤 `git worktree remove`·`git branch -d` 를 **출력하면 직접 실행**해요. worktree 를 안 쓰는 phase 도 있고 `git branch -d` 는 squash 머지에서 정상 상황에도 실패하기 때문이에요. 경로는 `git worktree list` 로 찾으니 **예전 `.claude/worktrees/` 에 만든 phase 도 그대로 안내돼요**(마이그레이션 불필요). compound 게이트는 그대로라, 교훈이 `origin/<base>` 에 도착하지 않았으면 정리 명령을 아예 내지 않아요. ([#40](https://github.com/seungdeok/harness-starter/issues/40))
+
 ## 2026-08-05
 
 - `/harness:setup` 이 `CLAUDE.md` 를 **두 조각으로 나눠** 넣어요 — 행동 가이드라인(A)과 `## Project Docs` @import 블록(B). `A 는 글로벌 · B 는 프로젝트` 를 고르면 여러 레포에서 가이드라인을 공유하면서 문서 참조만 레포별로 둘 수 있어요. 마커도 `harness:guidelines`/`harness:docs` 두 쌍으로 나뉘어요. **구본 `harness:start` 블록은 그대로 동작하고, 갱신을 고를 때만 교체돼요.** ([#38](https://github.com/seungdeok/harness-starter/issues/38))
