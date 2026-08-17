@@ -21,7 +21,6 @@ import argparse
 import json
 import os
 import re
-import shutil
 import subprocess
 import sys
 from datetime import datetime, timezone, timedelta
@@ -163,9 +162,45 @@ def _arrived(main: Path, base: str, branch: str, path: str) -> bool:
                     cwd=main).returncode == 0
 
 
-def _wt_path(root: Path, slug: str) -> Path:
-    """phase 전용 worktree 경로. init 과 done 이 갈라지지 않게 한 군데서만 만든다."""
-    return root / ".claude" / "worktrees" / slug
+def _wt_path(root: Path, slug: str, parent: str | None = None) -> Path:
+    """phase 전용 worktree 경로. init 이 만들 자리를 정한다 (issue #40).
+
+    기본은 레포 **형제** 디렉토리 — `.claude` 는 숨김이라 파일트리·Finder 에서 안 보인다.
+    parent 는 부모 디렉토리이고 slug 를 뒤에 붙이므로, `--worktree-dir .claude/worktrees` 가
+    구동작을 정확히 재현한다. 상대 경로는 메인 체크아웃 기준이고, 절대 경로는 pathlib 이
+    알아서 처리한다(`Path("/r") / "/abs"` → `/abs`).
+
+    done 은 이 함수를 쓰지 않는다 — 위치가 선택 가능해지면 slug 로 유도할 수 없어서
+    git 에게 묻는다(_worktree_for). 그래서 둘이 갈라질 여지 자체가 없다."""
+    if parent:
+        return (root / parent).resolve() / slug
+    return root.parent / f"{root.name}-worktrees" / slug
+
+
+def _worktree_for(porcelain: str, branch: str, main: str) -> str | None:
+    """`git worktree list --porcelain` 에서 이 브랜치가 체크아웃된 worktree 경로.
+
+    경로를 slug 로 유도하지 않고 git 에게 묻는다 — 위치가 선택 가능해졌고(issue #40),
+    phase.json 은 worktree 안에 있어 경로를 모르면 못 읽는다(닭-달걀). 덤으로 기존
+    `.claude/worktrees/` phase 도 그대로 잡혀 마이그레이션이 필요 없다.
+
+    레코드는 빈 줄로 구분되고 `worktree <path>` 로 시작한다:
+
+        worktree /path/to/wt      ← split(" ", 1): 경로에 공백이 들어갈 수 있다
+        HEAD <sha>
+        branch refs/heads/NAME    ← 없을 수 있다(detached)
+        locked / prunable         ← 뒤에 더 붙을 수 있다 (무시)
+
+    메인 체크아웃도 목록에 포함되므로 제외한다 — 포함하면 "메인을 지우세요"라고
+    안내하게 된다. 매칭은 정확 일치라 `A-B` 가 `A-B-C` 를 잡지 않는다."""
+    for record in porcelain.split("\n\n"):
+        lines = record.strip().splitlines()
+        if not lines or not lines[0].startswith("worktree "):
+            continue
+        path = lines[0].split(" ", 1)[1]
+        if f"branch refs/heads/{branch}" in lines and Path(path) != Path(main):
+            return path
+    return None
 
 
 # --- 순수 상태 로직 (git/io 없음 → selftest 대상) --------------------------
@@ -296,15 +331,16 @@ def _ask_review(no_review: bool) -> bool:
 
 
 def cmd_init(name: str, no_review: bool = False, no_worktree: bool = False,
-             no_compound: bool = False, no_tdd: bool = False):
-    """phase 전용 worktree(.claude/worktrees/<slug>)를 만들고 그 안에 phase.json 을 심는다.
+             no_compound: bool = False, no_tdd: bool = False,
+             worktree_dir: str | None = None):
+    """phase 전용 worktree(기본: ../<repo>-worktrees/<slug>)를 만들고 phase.json 을 심는다.
     메인 체크아웃 브랜치는 건드리지 않아 phase 를 병렬로 돌릴 수 있다.
-    --no-worktree 면 현재 체크아웃에서 바로 진행한다."""
+    --no-worktree 면 현재 체크아웃에서 바로 진행하고,
+    --worktree-dir <부모> 면 그 아래에 <slug> 로 만든다."""
     slug = _slug(name)
     branch = _branch(slug)
-    # 기준은 ROOT 가 아니라 메인 체크아웃 — worktree 안에서 init 해도 중첩되지 않고,
-    # done 이 찾는 곳과 항상 같아진다. 메인에서 실행하면 둘은 같은 경로다.
-    wt = None if no_worktree else _wt_path(_main_root(), slug)
+    # 기준은 ROOT 가 아니라 메인 체크아웃 — worktree 안에서 init 해도 중첩되지 않는다.
+    wt = None if no_worktree else _wt_path(_main_root(), slug, worktree_dir)
     f = _phase_file(slug) if wt is None else wt / "phases" / slug / "phase.json"
     if f.exists():
         sys.exit(f"ERROR: {f} 이미 있음.")
@@ -342,13 +378,16 @@ def cmd_advance(arg, summary):
 
 
 def cmd_done(name: str, force: bool = False):
-    """phase 를 끝낸 뒤 worktree 를 제거하고 브랜치를 정리한다.
-    완료된 phase 는 _resolve 가 못 찾으므로(cursor == 총 stage 수) 이름을 반드시 받고,
-    phase.json 은 worktree 안에 있어 메인에서 안 보이므로 slug 만으로 경로를 유도한다."""
+    """phase 가 정리해도 되는 상태인지 확인하고, 정리 **명령을 안내**한다.
+
+    직접 지우지 않는다 (issue #40). worktree 를 안 쓰는 phase 도 있고, `git branch -d` 는
+    squash 머지에서 정상 상황에도 실패한다 — 실패할 명령을 대신 돌리는 대신 사람에게 넘기면
+    그 분기들이 전부 없어지고, git 이 실패 이유를 스스로 설명한다.
+
+    완료된 phase 는 _resolve 가 못 찾으므로(cursor == 총 stage 수) 이름을 반드시 받는다."""
     slug = _slug(name)
     branch = _branch(slug)
     main = _main_root()
-    wt = _wt_path(main, slug)
     base = _base_branch(main)  # 게이트와 마지막 안내가 모두 쓴다 (--force 여도 필요)
 
     # compound 게이트 — 지우기 전에, 아무것도 지우기 전에 확인한다.
@@ -388,35 +427,28 @@ def cmd_done(name: str, force: bool = False):
                          "  커밋만 하고 push·머지가 안 됐어요. push 한 뒤 PR 을 머지하고 다시 실행하거나,\n"
                          "  정말 버려도 되면 --force 로 건너뛰세요.")
 
-    removed = False
-    if wt.exists():
-        blocking = _blocking(_run_git("status", "--porcelain", cwd=wt).stdout.splitlines())
+    # 경로는 유도하지 않고 git 에게 묻는다 — 위치가 선택 가능해졌기 때문(issue #40).
+    wt = _worktree_for(
+        _run_git("worktree", "list", "--porcelain", cwd=main).stdout, branch, str(main))
+
+    if wt is not None and Path(wt).exists():
+        # 커밋 안 된 작업이 있으면 정리를 권하지 않는다 — 안내를 따르면 사라질 것들이다.
+        blocking = _blocking(_run_git("status", "--porcelain", cwd=Path(wt)).stdout.splitlines())
         if blocking:
-            sys.exit("ERROR: 정리 안 된 변경이 있어요 (아무것도 지우지 않았어요):\n  "
+            sys.exit("ERROR: 정리 안 된 변경이 있어요 (정리하기 전에 처리하세요):\n  "
                      + "\n  ".join(blocking))
-        shutil.rmtree(wt / "phases", ignore_errors=True)
-        r = _run_git("worktree", "remove", str(wt), cwd=main)
-        if r.returncode != 0:
-            sys.exit(f"ERROR: worktree 제거 실패: {r.stderr.strip()}")
-        removed = True
-        print(f"  worktree 제거: {wt}")
+
+    print(f"  '{slug}' 는 정리해도 돼요. 아래를 직접 실행하세요:")
+    if wt is not None and Path(wt).exists():
+        print(f"    git worktree remove {wt}")
     else:
-        print(f"  worktree 없음 (이미 정리됨): {wt}")
-    # `-d` 는 도달 가능성으로 판정하므로 squash 머지면 다 머지됐어도 거부한다.
-    # 그래서 실패를 게이트로 쓸 순 없지만, ✓ 로 덮어 버리면 사람이 다음 수순으로 -D 를 밟는다
-    # (issue #32 의 실제 피해 경로). 남은 브랜치는 남았다고 말하고 확인 방법을 준다.
-    r = _run_git("branch", "-d", branch, cwd=main)
-    if r.returncode == 0:
-        print(f"  브랜치 {branch} 삭제")
-        print(f"  ✓ '{slug}' 정리 완료.")
-    else:
-        print(f"  ⚠ 브랜치 {branch} 를 남겨뒀어요 — git 이 미머지로 봐요.")
-        print("    squash 머지면 정상이지만, 내용을 확인하기 전엔 -D 로 지우지 마세요:")
-        print(f"      git diff origin/{base} {branch}")
-        print(f"  worktree 만 정리했어요 ('{slug}').")
-    if removed:
-        # 방금 지운 디렉토리가 셸의 cwd 일 수 있다.
-        print(f"  셸이 지워진 경로에 있으면: cd {main}")
+        # 조회 실패와 "worktree 없음"을 구분하지 않는다 — 지우는 게 없어 구분에 걸린 게 없다.
+        print(f"    (worktree 경로를 못 찾았어요 — `git worktree list` 로 확인하세요)")
+    # `-d` 는 도달 가능성으로 판정하므로 squash 머지면 다 머지됐어도 거부한다. 그래도 -D 를
+    # 권하지 않는다 — 확인 없이 지우는 게 issue #32 의 실제 피해 경로였다.
+    print(f"    git branch -d {branch}")
+    print(f"  `-d` 가 미머지라고 거부하면 squash 머지라서 정상일 수 있어요.")
+    print(f"  내용을 확인하기 전엔 -D 로 지우지 마세요: git diff origin/{base} {branch}")
 
 
 def cmd_run(arg):
@@ -512,8 +544,39 @@ def selftest():
         _show_next(fresh)
     assert "일부만 커밋" in buf.getvalue()  # 통째 커밋 대신 범위를 물어본다
     assert _slug("Share Fortune!!") == "share-fortune"
-    # worktree 경로 규칙 — init 과 done 이 갈라지면 done 이 엉뚱한 곳을 지운다.
-    assert _wt_path(Path("/r"), "a-b") == Path("/r/.claude/worktrees/a-b")
+    # worktree 경로 규칙 (issue #40) — 기본은 레포 형제 디렉토리.
+    assert _wt_path(Path("/p/r"), "a-b") == Path("/p/r-worktrees/a-b")
+    # --worktree-dir 은 부모를 받고 slug 를 뒤에 붙인다 → 구동작을 정확히 재현할 수 있다.
+    assert _wt_path(Path("/p/r"), "a-b", ".claude/worktrees") == Path("/p/r/.claude/worktrees/a-b")
+    assert _wt_path(Path("/p/r"), "a-b", "worktrees") == Path("/p/r/worktrees/a-b")
+    # 절대 경로는 pathlib 이 알아서 처리하고, 상대 경로의 .. 는 resolve 가 정규화한다.
+    # 실재하지 않는 경로를 쓴다 — resolve() 는 심볼릭 링크도 풀어서 macOS 의 /tmp 는
+    # /private/tmp 가 된다(실측). 있는 경로를 쓰면 이 케이스가 플랫폼마다 갈린다.
+    assert _wt_path(Path("/p/r"), "a-b", "/nonexistent-abs/wt") == Path("/nonexistent-abs/wt/a-b")
+    assert _wt_path(Path("/p/r"), "a-b", "../elsewhere") == Path("/p/elsewhere/a-b")
+
+    # done 의 worktree 조회 — 경로를 유도하지 않고 git 출력에서 찾는다 (issue #40).
+    _PC = (
+        "worktree /main\nHEAD abc\nbranch refs/heads/main\n\n"
+        "worktree /wt/a-b\nHEAD abc\nbranch refs/heads/A-B\n\n"
+        "worktree /wt/detached\nHEAD abc\ndetached\n\n"
+        "worktree /wt/a-b-c\nHEAD abc\nbranch refs/heads/A-B-C\n"
+    )
+    assert _worktree_for(_PC, "A-B", "/main") == "/wt/a-b"
+    assert _worktree_for(_PC, "NOPE", "/main") is None
+    # prefix 충돌: A-B 가 A-B-C 를 잡으면 엉뚱한 worktree 를 지우라고 안내한다.
+    assert _worktree_for(_PC, "A-B-C", "/main") == "/wt/a-b-c"
+    # 메인 체크아웃은 제외 — 포함하면 "메인을 지우세요"라고 안내하게 된다.
+    assert _worktree_for(_PC, "main", "/main") is None
+    assert _worktree_for("", "A-B", "/main") is None
+    # 경로에 공백이 들어갈 수 있다 → split(" ", 1) 이라야 안 잘린다.
+    assert _worktree_for(
+        "worktree /wt/my repo\nHEAD abc\nbranch refs/heads/A-B\n", "A-B", "/main"
+    ) == "/wt/my repo"
+    # locked/prunable 은 branch 뒤에 줄이 더 붙는다 — 무시하고 그대로 찾아야 한다.
+    assert _worktree_for(
+        "worktree /wt/l\nHEAD abc\nbranch refs/heads/A-B\nlocked\n", "A-B", "/main"
+    ) == "/wt/l"
     # 정리 가능 여부 판정: phases/ 만이면 진행, 그 외가 섞이면 그것만 막는다.
     assert _blocking(["?? phases/", "?? phases/x/plan.md"]) == []
     assert _blocking([]) == []
@@ -549,7 +612,12 @@ def main():
     sub = ap.add_subparsers(dest="cmd", required=True)
     p = sub.add_parser("init"); p.add_argument("name")
     p.add_argument("--no-review", action="store_true", help="plan-review(ceo/eng) stage 생략(안 물어봄)")
-    p.add_argument("--no-worktree", action="store_true", help="worktree 없이 현재 체크아웃에서 진행")
+    # 위치를 고르는 두 플래그는 서로 배타적 — argparse 가 처리한다.
+    g = p.add_mutually_exclusive_group()
+    g.add_argument("--no-worktree", action="store_true", help="worktree 없이 현재 체크아웃에서 진행")
+    g.add_argument("--worktree-dir", metavar="부모경로",
+                   help="worktree 를 만들 부모 디렉토리 (기본: ../<repo>-worktrees). "
+                        "<slug> 이 뒤에 붙고, 상대 경로는 메인 체크아웃 기준")
     p.add_argument("--no-compound", action="store_true", help="compound stage 생략(/ce-compound 는 수동)")
     p.add_argument("--no-tdd", action="store_true", help="TDD(red/green) 대신 단일 implement stage")
     p = sub.add_parser("status"); p.add_argument("phase", nargs="?")
@@ -561,7 +629,7 @@ def main():
     a = ap.parse_args()
 
     if a.cmd == "init":
-        cmd_init(a.name, a.no_review, a.no_worktree, a.no_compound, a.no_tdd)
+        cmd_init(a.name, a.no_review, a.no_worktree, a.no_compound, a.no_tdd, a.worktree_dir)
     elif a.cmd == "status":
         cmd_status(a.phase)
     elif a.cmd == "advance":

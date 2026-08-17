@@ -57,8 +57,11 @@ Stages: `discuss → plan → [plan-review-ceo] → [plan-review-eng] → approv
 `init` 하기 **전에 AskUserQuestion 으로 세 가지를 먼저** 물어요.
 
 1. **worktree** — 이 phase 를 어디서 돌릴지
-   - `전용 worktree` (기본, 병렬 안전): `.claude/worktrees/<slug>` 에 새 브랜치로 격리 → `init` 에 플래그 없음
+   - `전용 worktree` (기본, 병렬 안전): 레포 형제 디렉토리 `../<repo>-worktrees/<slug>` 에 새 브랜치로 격리 → `init` 에 플래그 없음
    - `현재 체크아웃`: 지금 브랜치에서 바로 → `init --no-worktree`
+   - 위치를 바꾸려면 `init --worktree-dir <부모경로>` — `<slug>` 이 뒤에 붙고 상대 경로는 메인
+     체크아웃 기준이에요. 예전 위치를 그대로 쓰려면 `--worktree-dir .claude/worktrees`.
+     (`--no-worktree` 와 동시에 줄 수 없어요.)
 2. **plan review** — 계획 검토를 어디까지 할지
    - `CEO + Eng 둘 다` (기본) → 플래그 없음
    - `CEO 만` / `Eng 만` → 둘 다 넣되(플래그 없음) 원치 않는 review stage 에서 실행 없이 `advance`
@@ -74,14 +77,15 @@ Stages: `discuss → plan → [plan-review-ceo] → [plan-review-eng] → approv
 phase 이름이 인자로 없으면 사용자에게 물어요. 그다음:
 
 ```bash
-python3 <pipeline.py 경로> init "<phase 이름>" --no-compound [--no-worktree] [--no-review] [--no-tdd]
+python3 <pipeline.py 경로> init "<phase 이름>" --no-compound [--no-worktree | --worktree-dir <부모경로>] [--no-review] [--no-tdd]
 ```
 
 - 브랜치 이름은 입력한 이름(slug)을 대문자로 한 것 (예: "share fortune" → `SHARE-FORTUNE`). pipeline.py 가 알아서 만들어요.
-- 전용 worktree 를 만들었으면 **이후 모든 명령은 그 worktree 안(cwd)에서** 실행해요:
+- 전용 worktree 를 만들었으면 **이후 모든 명령은 그 worktree 안(cwd)에서** 실행해요.
+  `init` 이 만든 경로를 그대로 출력하니 그 경로로 이동해요:
 
 ```bash
-cd .claude/worktrees/<slug>
+cd ../<repo>-worktrees/<slug>     # init 이 출력한 경로
 ```
 
 ## 2. stage 루프 (discuss → make-pr)
@@ -125,21 +129,33 @@ make-pr stage 를 `advance` 하면 파이프라인은 여기서 끝이에요. **
 cd <메인 레포 루트> && python3 <pipeline.py 경로> done <slug>
 ```
 
-`done` 은 worktree 를 지우고 `git branch -d` 로 브랜치를 정리해요. `-d` 는 도달 가능성으로 판정해서
-**squash 머지면 다 머지됐어도 거부**해요 — 그래서 브랜치가 남는 건 흔한 정상 상황이고, 그럴 땐
-`✓ 정리 완료` 대신 확인 명령(`git diff origin/<base> <branch>`)을 안내해요. 확인 전에 `-D` 로 지우지 마세요.
-`phases/<slug>/` 외에 커밋 안 된 변경이 남아 있으면 아무것도 지우지 않고 멈춰요.
+**`done` 은 아무것도 지우지 않아요.** 정리해도 되는 상태인지 확인하고 **명령을 출력**하면,
+사람이 그걸 직접 실행해요. worktree 를 안 쓰는 phase 도 있고 `git branch -d` 는 squash 머지에서
+정상 상황에도 실패하기 때문에, 실패할 명령을 대신 돌리지 않아요.
 
-**`done` 은 교훈이 `origin/<base>` 에 **도착**했는지 먼저 확인해요.** 두 단계로 봐요:
+```
+  'share-fortune' 는 정리해도 돼요. 아래를 직접 실행하세요:
+    git worktree remove /path/to/repo-worktrees/share-fortune
+    git branch -d SHARE-FORTUNE
+```
+
+worktree 경로는 `git worktree list --porcelain` 으로 찾으므로 **예전 `.claude/worktrees/` 에 만든
+phase 도 그대로 안내돼요** (마이그레이션 불필요). 못 찾으면 경로 대신 `git worktree list` 로 확인하라고
+안내하고, 브랜치 정리 줄은 그대로 나와요. `phases/<slug>/` 외에 커밋 안 된 변경이 있으면 안내 없이 멈춰요.
+
+**안내 전에 교훈이 `origin/<base>` 에 **도착**했는지 확인해요.** 두 단계로 봐요:
 
 1. 그 브랜치가 `<docs>/solutions/` 를 하나도 안 건드렸으면 → `compound 미수행` 으로 거부.
 2. `gh` 로 PR 을 봐서 **아직 안 머지됐거나, 머지된 뒤에 붙은 커밋이 있으면** → 거부.
    (`gh` 가 없거나 GitHub 레포가 아니면 노트가 `origin/<base>` 에 있는지 내용 비교로 폴백해요.)
 
-둘 다 **아무것도 지우지 않아요** — worktree 가 사라지면 그 작업은 아무것도 남기지 못하니까요.
+둘 다 **정리 명령을 아예 출력하지 않아요** — worktree 가 사라지면 그 작업은 아무것도 남기지 못하니까요.
 그러니 정리 **전에** `/ce-compound` 를 돌리고, 그 커밋을 push 해서 머지까지 끝내요.
 남길 게 정말 없으면 `done <slug> --force` 로 건너뛰어요.
 origin 이 없어 base 를 못 찾는 레포에서는 차단 대신 경고만 하고 진행해요.
+
+`git branch -d` 가 미머지라고 거부하면 squash 머지라서 정상일 수 있어요.
+내용을 확인하기 전엔 `-D` 로 지우지 마세요 — `git diff origin/<base> <branch>` 로 먼저 봐요.
 
 교훈 중 재발 방지 규칙이 강제가 꼭 필요한 경우에만 Claude Code hook 으로도 승격해요.
 

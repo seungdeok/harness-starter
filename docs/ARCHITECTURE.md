@@ -71,20 +71,25 @@ compound 만 CLAUDE.md 5장이 `/ce-compound` 를 지정.
 
 ### Phase 당 worktree (init 이 자동 생성)
 
-`init` 이 phase 마다 **전용 worktree**(`.claude/worktrees/<slug>`, 브랜치는 입력 이름을
-대문자로 한 `<SLUG>`)를 만들고 그 안에 `phases/<slug>/phase.json` 을 심어요. 메인 체크아웃 브랜치는
-건드리지 않으므로, **worktree 를 여러 개 띄우면 phase 를 병렬로** 돌릴 수 있어요.
+`init` 이 phase 마다 **전용 worktree**(기본은 레포 형제 디렉토리 `../<repo>-worktrees/<slug>`,
+브랜치는 입력 이름을 대문자로 한 `<SLUG>`)를 만들고 그 안에 `phases/<slug>/phase.json` 을 심어요.
+메인 체크아웃 브랜치는 건드리지 않으므로, **worktree 를 여러 개 띄우면 phase 를 병렬로** 돌릴 수 있어요.
 `init` 이후의 `status`/`advance`/`run` 은 해당 worktree 안에서 실행하세요.
-phase 가 끝나(PR 머지) 정리할 땐 `python3 <pipeline.py> done <slug>`.
+
+위치는 `--worktree-dir <부모경로>` 로 바꿔요 — `<slug>` 이 뒤에 붙고 상대 경로는 메인 체크아웃
+기준이에요. `--worktree-dir .claude/worktrees` 면 예전 위치 그대로예요 (ADR-015).
+
+phase 가 끝나(PR 머지) 정리할 땐 `python3 <pipeline.py> done <slug>`. `done` 은 **지우지 않고
+정리 명령을 안내**하며, 경로는 `git worktree list` 로 찾으므로 예전 위치의 phase 도 그대로 잡혀요.
 
 ### 대화형 흐름 (기본)
 
 각 stage 를 **세션에서 스킬로 직접 실행**하고, 통과하면 `advance` 로 넘어가요.
 
 ```bash
-# 1. phase 시작 (.claude/worktrees/share-fortune worktree + SHARE-FORTUNE 브랜치 생성)
+# 1. phase 시작 (../<repo>-worktrees/share-fortune worktree + SHARE-FORTUNE 브랜치 생성)
 python3 <pipeline.py> init "share fortune"
-cd .claude/worktrees/share-fortune         # 이후 명령은 worktree 안에서
+cd ../<repo>-worktrees/share-fortune       # init 이 출력한 경로. 이후 명령은 worktree 안에서
 
 # 2. 지금 실행할 stage 확인
 python3 <pipeline.py> status

@@ -135,13 +135,17 @@ make-pr 로 파이프라인은 끝나지만 작업은 안 끝나요. **리뷰까
 cd <메인 레포 루트> && python3 <pipeline.py> done <slug>
 ```
 
-`done` 은 지우기 전에 교훈이 `origin/<base>` 에 **도착**했는지 봐요 — 브랜치가 `docs/solutions/` 를
+`done` 은 **스스로 지우지 않아요** — 정리해도 되는지 확인하고 `git worktree remove`·`git branch -d`
+명령을 출력하면 직접 실행해요 (ADR-015). worktree 경로는 `git worktree list` 로 찾으니 예전
+`.claude/worktrees/` 에 만든 phase 도 그대로 안내돼요.
+
+안내하기 전에 교훈이 `origin/<base>` 에 **도착**했는지 봐요 — 브랜치가 `docs/solutions/` 를
 건드렸는지(귀속), 그리고 `gh` 로 PR 이 실제 머지됐고 그 뒤에 붙은 커밋이 없는지(도착). 하나라도
-어긋나면 **아무것도 지우지 않고 거부**해요 (`--force` 로 우회). 교훈을 push·머지하지 않은 채
+어긋나면 **정리 명령을 아예 내지 않고 거부**해요 (`--force` 로 우회). 교훈을 push·머지하지 않은 채
 worktree 를 날리면 그 작업이 아무것도 남기지 못하니까요 (ADR-012).
 
-`git branch -d` 는 squash 머지를 미머지로 보기 때문에 브랜치가 남는 건 흔한 정상 상황이에요.
-그때는 `✓ 정리 완료` 대신 확인 명령을 안내하니, 확인 전에 `-D` 로 지우지 마세요.
+`git branch -d` 는 squash 머지를 미머지로 보기 때문에 거부당하는 건 흔한 정상 상황이에요.
+확인 전에 `-D` 로 지우지 마세요 — `git diff origin/<base> <branch>` 로 내용을 먼저 봐요.
 
 ## 이 레포에서 개발 (dogfooding)
 

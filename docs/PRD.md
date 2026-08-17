@@ -44,14 +44,14 @@ plugin 에 담기는 스킬 4개: `pipeline`·`setup`·`make-pr`·`make-issue`.
 | ID  | 요구사항 | 근거 |
 | --- | --- | --- |
 | FR1 | phase 를 `init` 으로 만들고 `status`/`advance` 로 stage 를 하나씩 진행한다. 진행 상태는 `phases/<slug>/phase.json` 에 남아 세션이 끊겨도 이어서 간다 | [ARCHITECTURE](ARCHITECTURE.md) |
-| FR2 | `init` 이 phase 마다 전용 worktree(`.claude/worktrees/<slug>`)와 대문자 브랜치(`<SLUG>`)를 만든다 — phase 를 병렬로 돌릴 수 있다 | [ADR-001](ADR.md#adr-001) |
+| FR2 | `init` 이 phase 마다 전용 worktree(기본 `../<repo>-worktrees/<slug>`, `--worktree-dir` 로 변경 가능)와 대문자 브랜치(`<SLUG>`)를 만든다 — phase 를 병렬로 돌릴 수 있다 | [ADR-001](ADR.md#adr-001)·[015](ADR.md#adr-015) |
 | FR3 | `discuss`·`approve`·커밋 범위 확인은 **opt-out 이 없는** human gate 다 | [ADR-004](ADR.md#adr-004) |
 | FR4 | TDD 가 기본이다 — `implement` 자리에 `implement-red`/`implement-green` 을 splice 하고, red 직후 사람이 실패 이유를 확인한다 (`--no-tdd` 로 해제) | [ADR-004](ADR.md#adr-004) |
 | FR5 | `/harness:setup` 이 scope·docs 경로를 묻고 초기화한다. **기존 파일을 덮어쓰지 않는다** — `CLAUDE.md` 는 마커 사이 append 만 하고, 재실행 시 사전 스캔으로 확인을 한 번만 받는다 | [ADR-002](ADR.md#adr-002)·[013](ADR.md#adr-013) |
 | FR6 | 프로젝트 scope 로 복사한 `pipeline.py` 는 출처 SHA 헤더를 달고, 출처를 모르면 **복사하지 않는다** | [ADR-008](ADR.md#adr-008) |
 | FR7 | `make-pr`·`make-issue` 는 대상 레포의 템플릿을 읽어 그 구조로 쓰고, 없을 때만 내장 형식으로 fallback 한다 | [ADR-006](ADR.md#adr-006) |
 | FR8 | 파이프라인은 `init` **이전에** 하드 의존 스킬 가용성을 점검한다 — worktree·브랜치를 만들기 전이라야 손해가 0이다 | [ADR-007](ADR.md#adr-007) |
-| FR9 | `done` 은 worktree 를 지우기 전에 이 작업의 교훈이 `origin/<base>` 에 **도착**했는지 확인하고, 아니면 아무것도 지우지 않는다 | [ADR-012](ADR.md#adr-012) |
+| FR9 | `done` 은 이 작업의 교훈이 `origin/<base>` 에 **도착**했는지 확인하고, 도착했을 때만 정리 명령을 안내한다. 스스로 지우지는 않는다 | [ADR-012](ADR.md#adr-012)·[015](ADR.md#adr-015) |
 | FR10 | 사용자가 체감하는 변경은 `CHANGELOG.md` 에 남는다 — `plugin.json` 에 `version` 이 없어 커밋 SHA 가 곧 버전이기 때문 | [ADR-010](ADR.md#adr-010) |
 
 ## 6. 성공 지표 (Acceptance)
@@ -61,7 +61,7 @@ plugin 에 담기는 스킬 4개: `pipeline`·`setup`·`make-pr`·`make-issue`.
 - [x] phase 하나를 `discuss` → `make-pr` 까지 stage 상태를 잃지 않고 완주한다 (issue #7 이후 실사용)
 - [x] 승인(`approve`) 없이 구현 stage 로 넘어갈 수 없다
 - [x] `setup` 재실행이 기존 파일을 덮어쓰지 않고, 무엇을 왜 스킵했는지 파일 단위로 출력한다
-- [x] `done` 이 교훈 미도착 시 **아무것도 지우지 않고** 거부한다 (임시 레포 3케이스 실증)
+- [x] `done` 이 교훈 미도착 시 **정리 명령을 아예 내지 않고** 거부한다 (임시 레포 실증 — 처음엔 3케이스, ADR-015 이후 8케이스)
 - [x] 지식이 `docs/` 한 곳에만 쌓이고, ADR·해결 노트·GUARDRAILS 가 서로 링크된다
 
 **다음 마일스톤** — 아직 증명 못 한 것. 셋 다 "만들었다"가 아니라 "쓰였다"를 묻는다:
