@@ -19,6 +19,7 @@ skills/
   pipeline/         파이프라인 스킬 + scripts/pipeline.py (단일 소스)
   setup/            설치 마법사 + templates/ (대상 레포로 뿌리는 scaffold 원본)
   make-pr/ make-issue/
+hooks/              PreToolUse(Bash) 가드 — 파괴적 git·파이프 검증·git add -A 차단 (ADR-016)
 .claude/skills/     gstack 벤더 스킬 (plan-ceo-review·plan-eng-review) — plugin 미포함
 docs/               이 레포의 유일한 지식 저장소 (ADR-011)
   PRD.md ADR.md ARCHITECTURE.md
