@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """PreToolUse(Bash) guard: 규범으로만 적혀 있던 git·검증 규칙을 실행 직전에 강제 (ADR-016).
 
-근거: https://tech.kakaopay.com/post/ai-agent-2/
+막는 실패:
   - 파이프로 검증 실패가 통과로 둔갑 (`pnpm lint | tail -20` → exit 0)
   - `git stash && lint && git stash pop` 으로 다른 세션 작업 유실
   - CLAUDE.md §6: phases/ 는 커밋하지 않고, git add -A / . 로 쓸어 담지 않는다
