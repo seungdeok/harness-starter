@@ -9,6 +9,9 @@
 # 순수 로직 (cursor·advance·slug) — CI: validate.yml, 모든 PR 에서 실행
 python3 skills/pipeline/scripts/pipeline.py selftest
 
+# Bash 가드 훅 규칙 (deny/allow 케이스) — CI: validate.yml (ADR-016)
+python3 hooks/bash-guard.py --test
+
 # 플러그인 매니페스트 — CI: plugin-validate.yml, .claude-plugin/** 이 바뀔 때만 (ADR-010)
 claude plugin validate .
 
@@ -25,6 +28,8 @@ claude --plugin-dir .
 | --- | --- | --- |
 | `pipeline.py` 순수 함수 (cursor·advance·slug·`_blocking`·`_solution_notes`) | ✅ `selftest` | 로직이 있고 git 없이 돌아가요 |
 | `done` 의 compound 게이트 3분기·도착 판정 | ❌ | git·`gh` 호출에 의존해 `selftest` 로 못 덮어요 → 임시 레포 실증으로 대신해요 (ADR-012) |
+| `hooks/bash-guard.py` 규칙 판정 | ✅ `--test` | 정규식이라 오탐·미탐이 조용히 생겨요 |
+| 훅이 실제 세션에서 막는가 | ❌ | CI 로 못 덮어요 → `claude -p --setting-sources project --plugin-dir .` 로 1회 실증 (ADR-016) |
 | `.claude-plugin/*.json` | ✅ `claude plugin validate` | 깨지면 플러그인 전체가 설치 불가라 파급이 커요 |
 | `skills/**/SKILL.md` (산문 절차) | ❌ **어떤 CI 도 안 봐요** | `validate` 는 매니페스트만 봐요 — 실측했어요 (`ci-check-coverage.md`, issue #15) |
 | `docs/**` 링크·앵커 | ❌ | 변경 시 스크립트로 1회 확인하고 끝내요 (상시 검사 없음) |

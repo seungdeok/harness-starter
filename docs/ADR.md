@@ -8,6 +8,9 @@ harness 는 **남의 레포에서 도는 plugin** 이다. 대상의 언어도 �
 - **강제는 도구가 아니라 규범으로.** lefthook·CI·훅은 대상 레포에 런타임 의존을 만든다.
   지킬 규칙은 `CLAUDE.md` 와 `GUARDRAILS.md` 에 적고, 기계적 검증이 없다는 비용을
   그때마다 명시한다 ([ADR-005](#adr-005)·[007](#adr-007)·[013](#adr-013)).
+  **후속**: 이 원칙의 근거는 "대상 레포에 런타임 의존"이었다. **plugin 자신의 훅**은 plugin 캐시에
+  살아 대상 레포에 아무것도 남기지 않으므로 그 근거에 걸리지 않는다 — 실행 직전에 막아야 하는
+  파괴적 git 명령·파이프 검증은 plugin 훅으로 강제한다 ([ADR-016](#adr-016)).
 - **이미 있는 것을 재구현하지 않는다.** 에이전트가 컨텍스트로 가진 정보, git·gh 가 이미 아는
   사실을 코드로 다시 추측하지 않는다 ([ADR-007](#adr-007)·[012](#adr-012)).
 - **degrade 는 깔끔하게.** 전제가 없으면 기능을 반쯤 하지 말고 그 경로를 통째로 닫고 대안을
@@ -32,6 +35,7 @@ harness 는 **남의 레포에서 도는 plugin** 이다. 대상의 언어도 �
 - [ADR-013](#adr-013) — setup 재실행의 확인은 사전 스캔 한 곳에서만 받고, 판정할 수 없으면 `판정불가` 로 적는다 (issue #34)
 - [ADR-014](#adr-014) — `CLAUDE.md` 템플릿을 가이드라인/문서참조 두 조각으로 쪼개고, 조각별 scope 를 허용하되 조합은 2개만 둔다 (issue #38)
 - [ADR-015](#adr-015) — worktree 위치를 선택 가능하게 하고, `done` 은 지우는 대신 정리 명령을 안내한다 (issue #40)
+- [ADR-016](#adr-016) — 파괴적 git 명령·파이프 검증·`git add -A` 는 plugin 의 PreToolUse 훅으로 강제한다
 
 ---
 
@@ -178,3 +182,11 @@ harness 는 **남의 레포에서 도는 plugin** 이다. 대상의 언어도 �
 **이슈 근거의 정정**: 이슈가 든 근거 셋 중 **둘은 실측에서 성립하지 않았다.** ~~"레포 안이라 IDE 인덱싱·검색·`rg` 결과에 중복 매치가 섞인다"~~ — **거짓**. `.claude/worktrees/` 는 숨김 디렉토리이자 gitignore 대상이라 `rg` 가 두 겹으로 건너뛴다(`rg`·`rg --hidden`·`rg --no-ignore` 모두 0건, 둘을 동시에 줘야 잡힌다). gitignore 를 존중하는 도구도 마찬가지다. ~~"레포 크기가 조용히 불어난다"~~ — **절반만 맞다**. worktree 는 gitignore 대상이라 git object·clone 크기와 무관하고, 이 변경은 디스크 사용을 옆으로 **옮길 뿐 줄이지 않는다**(실제 이득은 `du -sh <repo>` 가 정직해지는 것). **"`.claude` 는 숨김이라 안 보인다"만 참이고 유일하게 살아남은 근거**다. 성립하지 않는 근거를 남기면 다음 사람이 틀린 전제를 물려받으므로 지우지 않고 정정해 적는다([spec-baseline-drift.md](solutions/spec-baseline-drift.md)).
 **트레이드오프**: **샌드박스 비용(이슈에 없던 신규 비용, 실측)** — 형제 디렉토리는 Claude Code Bash 샌드박스의 쓰기 허용 경로 **밖**이다(`touch` → `Operation not permitted`). `.claude/worktrees/` 는 안이었다. 이 phase 를 도는 동안 worktree 안의 **모든** Bash 명령이 샌드박스 우회를 필요로 했다. harness 의 주 사용처가 에이전트 세션이므로, 사람의 편의(파일트리 가시성)를 위해 에이전트의 마찰을 늘린 맞교환이고, PRD §6 의 첫 미증명 마일스톤("남의 레포에서 실제로 돈다")과 반대 방향인 점을 인정한다 — 되돌리려면 `--worktree-dir .claude/worktrees` 로 구동작을 그대로 얻는다. **`done` 이 2단계 의식이 된다**(돌리고, 출력된 명령을 복붙) — 대신 실패하는 명령을 안 돌리고 `-D` 유도 위험이 사라진다. **compound 게이트의 성격이 "지우기 전 차단"에서 "안내 전 차단"으로 바뀐다** — 사용자가 무시하고 직접 지울 수는 있으나 `--force` 가 이미 있었으므로 게이트는 처음부터 물리적 강제가 아니라 규범이었다([ADR-005](#adr-005)·[007](#adr-007) 의 축). **`git worktree list --porcelain` 출력 형식에 의존**한다 — 안정적인 plumbing 이지만 파싱은 파싱이라 순수 함수로 뽑아 selftest 8케이스로 덮는다. 실측한 형식 제약 둘: 경로 파싱은 `split(" ", 1)` 이라야 한다(공백 든 경로를 raw 로 내보낸다), `locked`·`prunable` 은 `branch` 뒤에 줄이 더 붙는다(무시하면 되고, `prunable` 은 `remove` 가 exit 0 로 정리하며 `locked` 은 git 이 스스로 안내한다). **출력 경로를 셸 쿼팅하지 않는다** — 공백 경로에서 복붙이 깨질 수 있으나 YAGNI 로 판단했고, 신고가 들어오면 `shlex.quote()` 한 줄로 되살린다. 산문(SKILL.md·README)은 **어떤 CI 도 검증하지 않으므로**([ci-check-coverage.md](solutions/ci-check-coverage.md)) 임시 레포 probe 8케이스 25단언으로 대신하며, 그중 4건(P3 메인 체크아웃·P7 미수행·P8 미도착·P2 구위치)이 역방향 확인이다. "실제 에이전트가 이 산문을 읽고 같은 판정을 내리는가"는 ADR-013·014 와 마찬가지로 **미검증으로 남는다**. `skills/setup/SKILL.md` 의 `.gitignore` 줄(`.claude/worktrees/`)은 **남긴다** — 그 위치를 고른 사용자에게 여전히 필요하고, 지우면 ADR-013 사전 스캔의 `없음`/`동일` 판정이 기존 레포에서 어긋난다.
 **검토했으나 버린 안**: **4지선다 `input()` 피커**(확인 지점 이중화 — 위 이유), **사이드카 위치 파일**(추적 안 되는 상태 파일이 늘고 사람이 `git worktree move` 하면 조용히 틀린다 — 이슈 본문도 같은 결론), **`--worktree-dir` 가 전체 경로를 받기**(사용자가 slug 를 직접 적어야 해 init 과 done 이 다른 slug 를 쓸 여지가 생긴다), **레포 안 경로일 때 `.gitignore` 자동 추가**(대상 레포에 규칙을 뿌리지 않는다 — [ADR-005](#adr-005)), **`done` 서브커맨드 통째 제거**(compound 게이트가 사라져 ADR-009·012·issue #32 의 작업과 PRD FR9 를 되돌린다), **기본값을 `.claude/worktrees/` 로 유지**(plan-review 가 위 정정과 샌드박스 비용을 근거로 제안했으나 사용자가 이슈 원안을 재확인했다 — 샌드박스 마찰이 실사용에서 체감되면 되살릴 축), **`git worktree list` rc 를 따로 분기해 "판정 불가"를 구분**(지우는 게 없어 구분에 걸린 게 없다 — 분기만 있는 코드는 만들지 않는다는 GUARDRAILS).
+
+---
+
+<a id="adr-016"></a>
+### ADR-016: 파괴적 git 명령·파이프 검증·`git add -A` 는 plugin 의 PreToolUse 훅으로 강제한다
+**결정**: plugin 루트에 `hooks/hooks.json` + `hooks/bash-guard.py`(stdlib 파이썬)를 두어 Bash 도구 호출 **직전**에 다음을 `permissionDecision: "deny"` 로 거부한다 — `git stash`(`list`/`show` 제외)·워킹트리 `git restore`·`git clean`·`git reset --hard`·`git checkout .`, `git add -A`/`.`/`--all` 과 `phases/`·`.omc/` 스테이징, 실행기(`pnpm`·`npx`·`tsc`·`pytest` 등)로 시작하는 검증 명령 뒤의 파이프(`pipefail` 이 있으면 허용). 거부 사유는 `[harness bash-guard]` 접두어를 달고 올바른 대안을 적어, 모델이 읽고 다시 시도하게 한다. 커밋 서명(`Co-Authored-By`) 금지 같은 **개인 취향 규칙은 넣지 않는다** — 공개 plugin 설치자에게 강제할 근거가 없다.
+**이유**: §철학 의 "강제는 규범으로" 는 **대상 레포에 런타임 의존을 만들지 않기 위해서**였다(lefthook·CI 를 뿌리면 대상 툴체인에 묶인다). plugin 훅은 plugin 캐시 안에서 돌고 대상 레포에 파일·설정을 하나도 남기지 않으므로 그 근거에 걸리지 않는다. 반면 규범만으로는 막지 못하는 실패가 있다 — `pnpm lint | tail -20` 은 `tail` 의 exit 0 을 넘겨 린트 실패를 통과로 기록하고, 린트 전후로 stash 를 넣고 빼는 체인은 린트 실패 시 다른 세션의 변경을 stash 에 남긴다. 둘 다 에이전트가 출력을 줄이거나 작업트리를 정리하려는 선의에서 나오는 명령이라 문서 규칙으로는 "지켜지길 기대하는" 단계에 머문다. CLAUDE.md §6 의 `git add -A` 금지도 [ADR-005](#adr-005) 가 "범위 확인 절차로 막는다"고 했던 같은 종류의 규범이라 함께 올린다.
+**트레이드오프**: **python3 가 설치자 PC 의 전제가 된다** — `pipeline.py` 가 이미 같은 전제라 새 의존은 아니다(jq 는 쓰지 않는다 — jq 가 없는 환경에서 다른 훅이 조용히 no-op 이 된 것을 실측했다). 훅은 **명령 문자열 전체**를 정규식으로 보므로 문자열 안에 등장만 해도 막는다 — `echo` 인자·heredoc 본문·`claude -p` 프롬프트에 금지 명령이 적혀 있으면 막히는 것을 이 ADR 을 쓰는 동안 실제로 겪었다. 셸 파싱을 넣으면 정확해지지만 YAGNI 로 두고, 우회는 입력을 파일로 넘기는 것이다. 반대 방향 오탐(`echo lint | tail`·`grep test src | head`)은 "실행기로 시작하는 세그먼트"로 좁혀 없앴다. 사용자가 정말 stash 가 필요하면 터미널에서 직접 실행해야 한다 — 의도된 비용. 규칙 판정은 `python3 hooks/bash-guard.py --test`(deny 14·allow 13) 로 CI 가 덮지만, "Claude Code 가 이 출력을 읽고 실제로 막는가"는 CI 로 못 덮는다 → `claude -p --setting-sources project --plugin-dir .` 로 글로벌 훅을 뺀 세션에서 `[harness bash-guard]` 사유로 거부되고 stash 가 0건인 것을 1회 실증했다(단위 테스트는 출력 모양만 본다 — 도구가 실제로 그 출력을 읽고 막는지는 세션에서만 보인다). 검토했으나 버린 안: **Stop 훅으로 미완료 단계 종료 차단**(`pipeline.py` 의 human gate 와 판정 지점이 이중화된다 — [ADR-013](#adr-013) 축), **PostToolUse 로 검증 결과를 파일에 기록**(`phase.json` 의 stage summary 가 같은 역할), **규칙을 `.claude/settings.json` 템플릿으로 대상 레포에 뿌리기**(대상 레포에 설정 의존 — GUARDRAILS 2026-08-01).

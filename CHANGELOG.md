@@ -4,6 +4,10 @@
 
 `plugin.json` 에 `version` 이 없어 **커밋 SHA 가 곧 버전**이에요(ADR-002). 그래서 버전 번호 대신 날짜로 묶고, 항목마다 이슈/PR 번호를 달아요.
 
+## 2026-11-17
+
+- **Bash 가드 훅이 생겼어요.** 플러그인을 켜면 Claude 가 `git stash`·`git restore`·`git clean`·`git reset --hard`·`git checkout .`, `git add -A`/`.`, `phases/`·`.omc/` 스테이징, 검증 명령 뒤 파이프(`pnpm lint | tail`)를 실행하기 **직전에 거부**하고 대안을 알려줘요. 지금까지 CLAUDE.md 규범으로만 막던 것들이에요. 파이프가 꼭 필요하면 `set -o pipefail;` 을 앞에 붙이면 통과해요. python3 가 필요해요(ADR-016).
+
 ## 2026-08-17
 
 - `/harness:pipeline` 의 `init` 이 만드는 worktree 위치가 **레포 형제 디렉토리**(`../<repo>-worktrees/<slug>`)로 바뀌었어요. `.claude` 가 숨김이라 파일트리에서 안 보이던 문제예요. 위치는 `--worktree-dir <부모경로>` 로 고를 수 있고, **예전 그대로 쓰려면 `--worktree-dir .claude/worktrees`** 예요. ([#40](https://github.com/seungdeok/harness-starter/issues/40))
