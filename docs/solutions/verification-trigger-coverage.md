@@ -130,4 +130,4 @@ git diff --name-status "$b" main | awk '$1=="D"{print $2}'   # 브랜치에만 �
 기존 GUARDRAILS 의 zsh 규칙은 **glob nomatch** 한정이라 이 케이스를 덮지 못했다.
 zsh 에서 명령이 조용히 무력화되는 경로가 최소 둘이라는 뜻이다.
 
-→ [GUARDRAILS.md](GUARDRAILS.md) 에 승격.
+→ GUARDRAILS 에 승격했다가 2026-11-22 에 `scripts/check-prose.py` 검사로 옮기고 지웠다.

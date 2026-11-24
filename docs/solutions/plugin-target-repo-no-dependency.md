@@ -57,4 +57,4 @@ gitignore 줄을 뺀 뒤 §6 규범을 CLAUDE.md 에만 넣었다면, **대상 �
 
 verify stage 에서 grep 으로 잡아 보완했고, 두 §6 이 `diff` 로 동일한지 확인했다. 계획에 없던 파일이라 "계획대로 했는지" 만 봤으면 통과했을 것이다 — **verify 는 계획 이행이 아니라 수용 기준 충족을 봐야 한다**는 게 확인됐다.
 
-→ [GUARDRAILS.md](GUARDRAILS.md) 에 승격.
+→ GUARDRAILS 에 승격했다가 2026-11-22 에 `scripts/check-prose.py` 미러 검사로 옮기고 지웠다.

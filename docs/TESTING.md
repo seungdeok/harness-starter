@@ -12,6 +12,9 @@ python3 skills/pipeline/scripts/pipeline.py selftest
 # Bash 가드 훅 규칙 (deny/allow 케이스) — CI: validate.yml (ADR-016)
 python3 hooks/bash-guard.py --test
 
+# 산문 검사 — 스킬 셸 명령의 zsh 함정·CLAUDE.md 미러 동기화 (GUARDRAILS 에서 옮겨 온 규칙)
+python3 scripts/check-prose.py --test && python3 scripts/check-prose.py
+
 # 플러그인 매니페스트 — CI: plugin-validate.yml, .claude-plugin/** 이 바뀔 때만 (ADR-010)
 claude plugin validate .
 
@@ -31,11 +34,12 @@ claude --plugin-dir .
 | `hooks/bash-guard.py` 규칙 판정 | ✅ `--test` | 정규식이라 오탐·미탐이 조용히 생겨요 |
 | 훅이 실제 세션에서 막는가 | ❌ | CI 로 못 덮어요 → `claude -p --setting-sources project --plugin-dir .` 로 1회 실증 (ADR-016) |
 | `.claude-plugin/*.json` | ✅ `claude plugin validate` | 깨지면 플러그인 전체가 설치 불가라 파급이 커요 |
-| `skills/**/SKILL.md` (산문 절차) | ❌ **어떤 CI 도 안 봐요** | `validate` 는 매니페스트만 봐요 — 실측했어요 (`ci-check-coverage.md`, issue #15) |
+| `skills/**/*.md` 셸 명령의 zsh 함정·`CLAUDE.md` 미러 동기화 | ✅ `check-prose.py` | GUARDRAILS 의 산문 규칙을 검사로 옮긴 것 — 옮긴 규칙은 GUARDRAILS 에서 지웠어요 |
+| `skills/**/SKILL.md` 절차의 의미 (산문) | ❌ | grep 으로 잡히는 패턴 외에는 아무도 안 봐요 (`ci-check-coverage.md`, issue #15) |
 | `docs/**` 링크·앵커 | ❌ | 변경 시 스크립트로 1회 확인하고 끝내요 (상시 검사 없음) |
 
 **가장 큰 구멍은 산문이에요.** `SKILL.md` 는 이 레포에서 가장 자주 바뀌는 파일 축에 드는데
-자동 검사가 0이에요. 아래 probe 절차가 그 자리를 메워요.
+자동 검사는 grep 으로 잡히는 패턴(`check-prose.py`)뿐이에요. 아래 probe 절차가 나머지를 메워요.
 
 ## 새 코드에 테스트를 어디까지 붙이나
 

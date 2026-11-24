@@ -4,6 +4,10 @@
 
 `plugin.json` 에 `version` 이 없어 **커밋 SHA 가 곧 버전**이에요(ADR-002). 그래서 버전 번호 대신 날짜로 묶고, 항목마다 이슈/PR 번호를 달아요.
 
+## 2026-11-22
+
+- `/harness:setup` 이 넣는 `CLAUDE.md` 가이드라인 §5 와 `GUARDRAILS.md` 템플릿의 **compound 승격 순서가 바뀌었어요.** 재발 방지 규칙은 먼저 린트·테스트·CI·hook 같은 **검사로 만들 수 있는지** 보고, 못 만드는 것만 `GUARDRAILS.md` 에 한 줄로 올려요. 검사로 옮겨진 규칙은 GUARDRAILS 에서 지워요. 이미 setup 한 레포는 재실행하면 `CLAUDE.md` 블록 갱신을 물어봐요 — 이미 있는 `GUARDRAILS.md` 는 건드리지 않으니 머리말이 필요하면 직접 옮기세요.
+
 ## 2026-11-17
 
 - **Bash 가드 훅이 생겼어요.** 플러그인을 켜면 Claude 가 `git stash`·`git restore`·`git clean`·`git reset --hard`·`git checkout .`, `git add -A`/`.`, `phases/`·`.omc/` 스테이징, 검증 명령 뒤 파이프(`pnpm lint | tail`)를 실행하기 **직전에 거부**하고 대안을 알려줘요. 지금까지 CLAUDE.md 규범으로만 막던 것들이에요. 파이프가 꼭 필요하면 `set -o pipefail;` 을 앞에 붙이면 통과해요. python3 가 필요해요(ADR-016).

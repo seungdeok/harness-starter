@@ -17,3 +17,4 @@ jobs:
       - uses: actions/checkout@v4
       - run: python3 skills/pipeline/scripts/pipeline.py selftest
       - run: python3 hooks/bash-guard.py --test
+      - run: python3 scripts/check-prose.py --test && python3 scripts/check-prose.py

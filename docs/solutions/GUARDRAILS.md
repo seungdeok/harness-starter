@@ -2,6 +2,7 @@
 
 실행-검토에서 나온 교훈 중 "다음부터 이렇게 하면 그 실수를 안 한다" 수준으로 일반화된 규칙만 한 줄씩 모아요.
 compound 단계에서 새 규칙이 생기면 여기에 추가하고, 다음 작업의 `plan`/`brainstorm`이 이 목록을 먼저 읽어요.
+검사로 못 만드는 판단 규칙만 둬요 — 검사로 옮겨진 규칙은 지워요.
 개별 사례의 자세한 맥락은 `docs/solutions/<slug>.md` 해결 노트에 있어요.
 
 ## 규칙
@@ -11,9 +12,7 @@ compound 단계에서 새 규칙이 생기면 여기에 추가하고, 다음 작
 - [2026-08-01] `gh issue view`/`gh pr edit` 가 Projects classic GraphQL 에러를 내면 `gh api` 로 우회한다. (근거: [ci-check-coverage.md](ci-check-coverage.md))
 - [2026-08-01] harness 가 대상 레포에 뿌리는 것(gitignore 줄·훅·스크립트·CI)은 대상 레포에 런타임 의존을 만들지 않는다 — 대상의 언어·툴체인을 모르는 게 기본값이다. (근거: [plugin-target-repo-no-dependency.md](plugin-target-repo-no-dependency.md))
 - [2026-08-01] 근거를 대서 배제한 안을 다시 선택지에 올릴 때는 그 근거가 선호 문제인지 제약인지 구분한다 — 제약이면 옵션에서 뺀다. 단점을 설명에 적어두는 건 제약을 선호로 격하시키는 것이다. (근거: [plugin-target-repo-no-dependency.md](plugin-target-repo-no-dependency.md))
-- [2026-08-01] 루트 `CLAUDE.md` 를 고치면 `skills/setup/templates/` 의 미러도 같이 고친다 — 가이드라인 본문은 `CLAUDE-guidelines.md`, `## Project Docs` 는 `CLAUDE-docs.md` 로 나뉘어 있으니 해당하는 쪽을 고른다. 대상 레포에만 규범이 빠지면 원래 버그보다 나쁘다. (근거: [plugin-target-repo-no-dependency.md](plugin-target-repo-no-dependency.md))
 - [2026-08-01] 스킬·문서에 써 넣는 셸 명령은 "결과 있음"과 "결과 없음" 두 상태로 실제 실행해 본다 — 결함은 대개 없음 쪽에 숨어 있다. (근거: [skill-prose-commands.md](skill-prose-commands.md))
-- [2026-08-01] 매칭이 없을 수 있는 조회에는 `ls *.ext` 대신 `find <dir> -name '*.ext'` 를 쓴다 — zsh 의 glob nomatch 에러는 `2>/dev/null` 로 안 막힌다. (근거: [skill-prose-commands.md](skill-prose-commands.md))
 - [2026-08-01] CLI 플래그는 `--help` 로 설치된 버전에 실제 있는지 확인한다 — 공식 문서에 있어도 구버전엔 없다. (근거: [skill-prose-commands.md](skill-prose-commands.md))
 - [2026-08-01] 문서가 "레포의 X 형식에 맞춰"라고 서술하면 X 를 읽는 단계가 절차에 실제로 있는지 대조한다 — plugin 은 남의 레포에서 도니 "우리 레포에서 잘 됨"은 검증이 아니다. (근거: [skill-prose-commands.md](skill-prose-commands.md))
 - [2026-08-01] worktree phase 의 `pipeline.py status`/`advance` 는 매번 `cd <worktree> && ...` 한 줄로 실행한다 — 앞 명령의 셸 cwd 에 기대면 활성 phase 가 하나뿐인 다른 레포에서 조용히 엉뚱한 phase 가 advance 된다. (근거: [pipeline-worktree-cwd.md](pipeline-worktree-cwd.md))
@@ -29,7 +28,6 @@ compound 단계에서 새 규칙이 생기면 여기에 추가하고, 다음 작
 - [2026-08-01] 정방향 통과를 근거로 삼기 전에 그 실행이 대상 코드 경로를 실제로 밟는지 역방향으로 확인한다 — 조건을 뒤집어도 결과가 그대로면 통과한 게 아니라 아무것도 안 돈 것이다. 읽기 툴은 대개 mutation boundary 를 우회한다. (근거: [verification-trigger-coverage.md](verification-trigger-coverage.md))
 - [2026-08-01] 도구가 생성한 파일을 손으로 고치면 본문에서 파생된 메타데이터(frontmatter `links`·인덱스)도 함께 재생성한다 — 검사 도구는 본문이 아니라 그 필드를 읽는다. (근거: [omc-wiki-page-authoring.md](omc-wiki-page-authoring.md))
 - [2026-08-01] 슬러그·ID 를 예측해서 참조를 미리 만들지 않는다 — 생성 → 실제 이름 확인 → 참조 연결 순서로 간다. 도구마다 슬러그 규칙이 다르고 비-ASCII 처리는 특히 갈린다. (근거: [omc-wiki-page-authoring.md](omc-wiki-page-authoring.md))
-- [2026-08-01] 셸 변수에 담은 파일 목록을 `cmd -- $files` 로 넘기지 않는다 — zsh 는 따옴표 없는 확장에도 단어 분할을 하지 않아 여러 줄이 인자 하나로 뭉치고, 매칭 0건이 조용히 "차이 없음"으로 읽힌다. `"${(f)files}"` 를 쓰거나 pathspec 없이 `--name-status` 로 판정한다. (근거: [verification-trigger-coverage.md](verification-trigger-coverage.md))
 - [2026-08-02] 스킬이 특정 경로·도구를 쓰라고 할 때, 그 경로에 대해 레포가 이미 내린 결정(ADR)이 있는지 먼저 본다 — 스킬의 기본 동작은 레포 사정을 모르고, 기각된 안을 되살릴 수 있다. (근거: [omc-wiki-page-authoring.md](omc-wiki-page-authoring.md))
 - [2026-08-02] ref 를 비교하는 식은 양변이 같은 네임스페이스(원격/로컬)인지 확인한다 — `origin/X...Y` 처럼 한쪽만 원격이면 "원격에 있는가"를 보증하지 않고 조용히 약한 질문이 된다. (근거: [gate-ref-symmetry.md](gate-ref-symmetry.md))
 - [2026-08-02] 안전장치가 통과했을 때 막아 준 근거가 설계인지 우연인지 구분한다 — "사고가 안 났다"는 게이트가 작동했다는 증거가 아니다. 게이트를 "무엇을 봤는가"가 아니라 "이 통과가 무엇을 보증하는가"로 옮겨 적어 본다. (근거: [gate-ref-symmetry.md](gate-ref-symmetry.md))
