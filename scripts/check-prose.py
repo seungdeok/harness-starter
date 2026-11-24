@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
-"""산문(SKILL.md·CLAUDE.md 미러)에 대한 결정론적 검사 — GUARDRAILS 에서 옮겨 온 규칙.
+"""스킬 문서와 CLAUDE.md 미러를 CI 에서 검사한다.
 
-  1. 스킬 산문의 셸 명령에 `ls *.ext` 금지 — zsh nomatch 에러는 2>/dev/null 로 안 막힌다 (find 를 쓴다)
-  2. `cmd -- $files` 금지 — zsh 는 단어 분할을 안 해 목록이 인자 하나로 뭉친다
-  3. 루트 CLAUDE.md ↔ templates/CLAUDE-guidelines.md 본문, CLAUDE-docs.md 의 @import 줄 미러 동기화
-근거: docs/solutions/skill-prose-commands.md · verification-trigger-coverage.md · plugin-target-repo-no-dependency.md
-Self-check: python3 scripts/check-prose.py --test
+GUARDRAILS 에 글로만 있던 규칙 중 기계로 판정되는 것을 옮겨 왔다.
+- 스킬에 적힌 셸 명령에 `ls *.ext` 를 쓰지 않는다. zsh 는 매칭이 없으면 2>/dev/null 로도 에러를 못 막는다.
+- `cmd -- $files` 를 쓰지 않는다. zsh 는 단어 분할을 안 해서 목록이 인자 하나로 뭉친다.
+- 루트 CLAUDE.md 와 setup 템플릿(CLAUDE-guidelines.md 본문, CLAUDE-docs.md 의 @import 줄)이 어긋나지 않는다.
+
+배경은 docs/solutions/ 의 skill-prose-commands.md, verification-trigger-coverage.md,
+plugin-target-repo-no-dependency.md 에 있다.
+자체 테스트: python3 scripts/check-prose.py --test
 """
 import difflib
 import re
@@ -15,9 +18,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 LINE_RULES = [
     (re.compile(r"(?:^|[\s`;&|(])ls\s[^\n`|]*\*"),
-     "`ls *.ext` 금지: zsh 의 glob nomatch 에러는 2>/dev/null 로 안 막혀요. `find <dir> -name '*.ext'` 를 쓰세요."),
+     "`ls *.ext` 대신 `find <dir> -name '*.ext'` 를 써 주세요. zsh 는 매칭이 없을 때 나는 에러를 2>/dev/null 로 못 막아요."),
     (re.compile(r"\s--\s+\$(?:\w|\{)"),
-     "`cmd -- $files` 금지: zsh 는 단어 분할을 안 해 목록이 인자 하나로 뭉쳐요. `\"${(f)files}\"` 를 쓰세요."),
+     "`cmd -- $files` 는 zsh 에서 목록이 인자 하나로 뭉쳐요. `\"${(f)files}\"` 로 바꿔 주세요."),
 ]
 
 
@@ -29,7 +32,8 @@ def line_errors(path: Path, text: str):
 
 
 def mirror_view(root_md: str) -> str:
-    """허용 차이(제목·§7·Project Docs)를 걷어 낸다 — 루트 전용 절을 추가하면 여기도 고친다."""
+    """루트에만 있는 부분(제목, §7, Project Docs)을 빼고 비교할 본문만 남긴다.
+    루트 전용 절을 새로 만들면 여기도 고쳐야 한다."""
     body = root_md.split("\n---\n\n## Project Docs", 1)[0]
     body = re.sub(r"\n## 7\..*?(?=\n---\n)", "", body, flags=re.S)
     return body.split("\n", 1)[1].strip()
@@ -46,7 +50,7 @@ def imports(md: str) -> list:
 def mirror_errors(name: str, root: list, tpl: list):
     if root != tpl:
         diff = "\n".join(difflib.unified_diff(root, tpl, "CLAUDE.md", name, lineterm="", n=1))
-        yield f"CLAUDE.md ↔ {name} 미러가 갈렸어요 — 대상 레포에만 규범이 빠지지 않게 같이 고치세요.\n{diff}"
+        yield f"CLAUDE.md 와 {name} 내용이 달라요. setup 으로 설치한 레포에만 이 변경이 빠지지 않게 둘 다 고쳐 주세요.\n{diff}"
 
 
 def main() -> int:
